@@ -2,7 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs = require('fs'); // 引入檔案系統模組
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -10,70 +10,27 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// --- 除錯工具：列出所有檔案 ---
-// 這會幫助我們確認 Render 到底抓到了什麼檔案
-function listFiles(dir, fileList = []) {
-    try {
-        const files = fs.readdirSync(dir);
-        files.forEach(file => {
-            const filePath = path.join(dir, file);
-            const stat = fs.statSync(filePath);
-            if (stat.isDirectory()) {
-                if (file !== 'node_modules' && file !== '.git') { // 忽略系統資料夾
-                    listFiles(filePath, fileList);
-                }
-            } else {
-                fileList.push(filePath.replace(__dirname, '.')); // 顯示相對路徑
-            }
-        });
-    } catch (e) {
-        console.error("讀取目錄失敗:", e);
-    }
-    return fileList;
-}
-
-console.log("=== 伺服器啟動診斷開始 ===");
-console.log("Current Directory:", __dirname);
-console.log("File Structure Check:");
-const allFiles = listFiles(__dirname);
-console.log(allFiles.join('\n'));
-console.log("=== 伺服器啟動診斷結束 ===");
-
-// --- 關鍵修正：智慧路徑偵測 ---
+// --- 扁平化結構設定 ---
+// 直接使用當前目錄 (__dirname) 作為靜態檔案來源
 const rootPath = __dirname;
-const publicPath = path.join(__dirname, 'public');
 
-let finalPath = null;
+console.log("=== 伺服器啟動 (扁平模式) ===");
+console.log("工作目錄:", rootPath);
 
-// 檢查 public/index.html
-if (fs.existsSync(path.join(publicPath, 'index.html'))) {
-    console.log("✅ 成功: 在 public/index.html 找到檔案");
-    finalPath = publicPath;
-} 
-// 檢查根目錄 index.html (備案)
-else if (fs.existsSync(path.join(rootPath, 'index.html'))) {
-    console.log("⚠️ 注意: 在根目錄找到 index.html (建議移動到 public 資料夾)");
-    finalPath = rootPath;
-} 
-else {
-    console.error("❌ 嚴重錯誤: 到處都找不到 index.html！請檢查 GitHub 檔案結構。");
-}
-
-if (finalPath) {
-    app.use(express.static(finalPath));
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(finalPath, 'index.html'));
-    });
+// 檢查 index.html 是否存在
+const indexPath = path.join(rootPath, 'index.html');
+if (fs.existsSync(indexPath)) {
+    console.log("✅ 成功找到 index.html");
 } else {
-    // 找不到檔案時顯示錯誤頁面，而不是讓伺服器崩潰
-    app.get('*', (req, res) => {
-        res.status(404).send(`
-            <h1>Deployment Error</h1>
-            <p>Could not find index.html.</p>
-            <p>Please check the Render logs for the file structure dump.</p>
-        `);
-    });
+    console.error("❌ 嚴重錯誤：找不到 index.html！請確認檔案已上傳至 GitHub 根目錄。");
+    // 列出目前檔案以供除錯
+    try {
+        console.log("目前檔案列表:", fs.readdirSync(rootPath));
+    } catch (e) { console.log("無法讀取目錄"); }
 }
+
+// 設定靜態檔案服務 (讀取根目錄下的 js, css, html)
+app.use(express.static(rootPath));
 
 // 記憶體資料庫
 const rooms = {};
@@ -109,7 +66,16 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+// 所有路由都回傳 index.html (SPA 模式)
+app.get('*', (req, res) => {
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send("Error: index.html not found. Check Server Logs.");
+    }
+});
+
+const PORT = process.env.PORT || 10000; // Render 預設使用 10000
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
