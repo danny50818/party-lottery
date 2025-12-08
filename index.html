@@ -4,31 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>家防中心尾牙盛典</title>
-    
-    <!-- 1. 載入 CSS -->
+
+    <!-- 1. 錯誤攔截 -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            var el = document.getElementById('loading-text');
+            if (el) {
+                el.innerHTML = '<span style="color:#ff6b6b">系統發生錯誤</span><br><span style="font-size:12px;color:#ccc">' + msg + '</span>';
+                document.getElementById('loading-spinner').style.display = 'none';
+                var btn = document.createElement('button');
+                btn.innerText = "重新整理";
+                btn.style.cssText = "margin-top:20px;padding:10px 20px;background:white;color:black;border:none;border-radius:5px;cursor:pointer;";
+                btn.onclick = function(){window.location.reload()};
+                document.getElementById('loading-screen').appendChild(btn);
+            }
+            console.error(msg, url, line);
+            return false;
+        };
+    </script>
+
+    <!-- CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Russo+One&display=swap" rel="stylesheet">
     
-    <!-- 2. 載入 程式庫 -->
+    <!-- 2. 穩定版程式庫 (cdnjs) -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- Tools -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
 
     <style>
         body { margin: 0; overflow: hidden; font-family: "Noto Sans TC", sans-serif; background: #450a0a; color: white; }
         
         /* Loading */
-        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #450a0a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #450a0a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
         .spinner { width: 50px; height: 50px; border: 5px solid rgba(251, 191, 36, 0.3); border-radius: 50%; border-top-color: #fbbf24; animation: spin 1s linear infinite; }
 
         /* UI */
         .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
         .gold-text { background: linear-gradient(to bottom, #fde68a, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 10px rgba(217, 119, 6, 0.5); }
-        .bg-rays { position: absolute; inset: -150%; background: repeating-conic-gradient(from 0deg, #b45309 0deg 10deg, transparent 10deg 20deg); opacity: 0.15; animation: rotate-slow 60s linear infinite; pointer-events: none; }
         
         /* Themes */
         .theme-cyber { background: radial-gradient(circle, #1a1a2e, #16213e, #0f3460); color: #00ffea; }
@@ -36,10 +55,9 @@
         .theme-space { background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); color: #e0e7ff; }
         .theme-magic { background: radial-gradient(circle at center, #581c87, #3b0764, #1a0329); color: #d8b4fe; }
         .theme-festival { background: linear-gradient(135deg, #be185d 0%, #db2777 50%, #9d174d 100%); color: #be185d; }
-        .theme-race { background: linear-gradient(to bottom, #3f6212, #14532d); color: #fef08a; }
+        .theme-race { background: linear-gradient(to bottom, #365314, #14532d); color: #fef08a; }
 
         /* Animations */
-        @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
         .bubble { position: absolute; animation: floatUp linear infinite; bottom: -100px; }
         .neon-text { text-shadow: 0 0 10px rgba(0,255,234,0.7); font-family: 'Russo One', sans-serif; }
@@ -50,13 +68,17 @@
         .card-flip.flipped { transform: rotateY(180deg); }
         .card-face { backface-visibility: hidden; position: absolute; inset: 0; }
         .card-back { transform: rotateY(180deg); }
+        
         @keyframes meteorDrop { 0% { transform: translate(100%, -100%) scale(0.5); opacity: 1; } 70% { transform: translate(0, 0) scale(1.5); opacity: 1; } 100% { transform: translate(-20%, 20%) scale(0.2); opacity: 0; } }
         @keyframes impactShake { 0%, 100% { transform: translate(0, 0); } 10%, 90% { transform: translate(-5px, 5px); } 50% { transform: translate(5px, -5px); } }
         .animate-impact { animation: impactShake 0.5s ease-in-out; }
+        
         @keyframes reelBlur { 0% { transform: translateY(0); filter: blur(2px); } 100% { transform: translateY(-50%); filter: blur(2px); } }
         .reel-rolling .reel-track { animation: reelBlur 0.2s linear infinite; }
+        
         @keyframes clawMove { 0% { left: 10%; } 50% { left: 80%; } 100% { left: 10%; } }
-        @keyframes clawGrab { 0% { top: -20px; } 50% { top: 150px; } 100% { top: -20px; } }
+        @keyframes clawGrab { 0% { top: -20px; } 40% { top: 150px; } 60% { top: 150px; } 100% { top: -20px; } }
+        .claw-arm-h { animation: clawMove 3s ease-in-out infinite alternate; position: absolute; top: 0; width: 4px; height: 100%; background: silver; left: 50%; }
         .claw-grabber { position: absolute; width: 60px; height: 60px; top: -20px; left: -28px; transition: top 0.5s; font-size: 3rem; display: flex; justify-content: center; align-items: center; }
         .grabbing .claw-grabber { animation: clawGrab 3s ease-in-out; }
     </style>
@@ -64,26 +86,43 @@
 <body>
     <div id="root"></div>
     <div id="loading-screen">
-        <div class="spinner mb-4"></div>
-        <div class="text-yellow-400 font-bold text-xl">系統載入中...</div>
+        <div id="loading-spinner" class="spinner mb-4"></div>
+        <div id="loading-text" class="text-yellow-400 font-bold text-xl text-center">系統啟動中...</div>
     </div>
 
     <script type="text/babel">
+        // 修正：從全域變數取得 React 物件
         const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
-        const removeLoading = () => { const el = document.getElementById('loading-screen'); if(el) el.style.display = 'none'; };
+        
+        // 遊戲模式設定 (移到全域)
+        const GAME_MODES = [
+            { id: 'cyber', name: '矩陣滾動', theme: 'theme-cyber' }, 
+            { id: 'retro', name: '幸運轉盤', theme: 'theme-retro' }, 
+            { id: 'magic', name: '命運塔羅', theme: 'theme-magic' }, 
+            { id: 'space', name: '雷達鎖定', theme: 'theme-space' }, 
+            { id: 'vegas', name: '黃金拉霸', theme: 'theme-retro' }, 
+            { id: 'meteor', name: '流星降臨', theme: 'theme-space' }, 
+            { id: 'claw', name: '夾娃娃機', theme: 'theme-festival' }, 
+            { id: 'race', name: '激戰賽馬', theme: 'theme-race' },
+        ];
+
+        const removeLoading = () => {
+            const el = document.getElementById('loading-screen');
+            if(el) { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 500); }
+        };
 
         // --- Error Boundary ---
         class ErrorBoundary extends Component {
-            constructor(props) { super(props); this.state = { hasError: false }; }
-            static getDerivedStateFromError(error) { return { hasError: true }; }
-            componentDidCatch(error, info) { console.error(error, info); }
+            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+            static getDerivedStateFromError(error) { return { hasError: true, error }; }
+            componentDidCatch(error, errorInfo) { console.error("React Error:", error, errorInfo); }
             render() {
                 if (this.state.hasError) {
                     removeLoading();
-                    return <div className="h-screen flex items-center justify-center p-6 bg-red-900 text-white"><h1>⚠️ 渲染錯誤，請重整</h1></div>;
+                    return <div className="h-screen flex items-center justify-center p-6 bg-red-900 text-white text-center"><h1>⚠️ 介面渲染錯誤</h1><button onClick={() => window.location.reload()} className="bg-white text-red-900 px-6 py-2 mt-4 rounded-full font-bold">重新整理</button></div>;
                 }
                 return this.props.children;
             }
@@ -95,8 +134,10 @@
             const [status, setStatus] = useState('connecting');
 
             useEffect(() => {
-                if(!roomId || typeof io === 'undefined') return;
-                const socket = io({ reconnectionAttempts: 10, timeout: 10000 }); 
+                if(!roomId) return;
+                if (typeof io === 'undefined') { setStatus('error-lib-missing'); return; }
+
+                const socket = io({ reconnectionAttempts: 5, timeout: 5000 }); 
                 socketRef.current = socket;
 
                 socket.on('connect', () => { setStatus('connected'); socket.emit('join_room', roomId); });
@@ -110,41 +151,55 @@
                 return () => socket.disconnect();
             }, [roomId]);
 
-            const emit = (event, data) => { if(socketRef.current) socketRef.current.emit(event, { roomId, ...data }); };
+            const emit = (event, data) => { if (socketRef.current) socketRef.current.emit(event, { roomId, ...data }); };
             return { status, emit };
         };
 
-        // --- 視覺組件 (移到外部定義，解決動畫消失問題) ---
+        // --- 視覺組件 (獨立於 HostApp 外部) ---
         const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
             const [display, setDisplay] = useState("READY");
             const [horses, setHorses] = useState([]);
             const [slotStops, setSlotStops] = useState([false, false, false]);
+            const [impact, setImpact] = useState(false);
 
             useEffect(() => {
                 let interval;
                 if (isRolling) {
-                    setSlotStops([false, false, false]); // Reset slots
+                    // 開始滾動時重置狀態
+                    setSlotStops([false, false, false]);
+                    setImpact(false);
+                    
                     if (mode === 'race') {
                         const racers = candidates.slice(0, 8).map(p => ({...p, progress: 0}));
                         while(racers.length < 5) racers.push({name:'NPC', avatar:'🐴', progress:0});
                         setHorses(racers);
-                        interval = setInterval(() => setHorses(prev => prev.map(h => ({...h, progress: Math.min(90, h.progress + Math.random()*3)}))), 100);
+                        interval = setInterval(() => setHorses(prev => prev.map(h => ({...h, progress: Math.min(90, h.progress + Math.random()*2)}))), 100);
                     } else if (mode !== 'slots') {
-                        interval = setInterval(() => setDisplay(candidates[Math.floor(Math.random() * candidates.length)]?.name || "..."), 80);
+                        interval = setInterval(() => {
+                            const randomName = candidates[Math.floor(Math.random() * candidates.length)]?.name || "...";
+                            setDisplay(randomName);
+                        }, 80);
                     }
                 } else if (targetName) {
+                    // 停止時顯示結果
                     setDisplay(targetName);
-                    if (mode === 'race' && winnerObj) setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 100} : h));
+                    
+                    if (mode === 'race' && winnerObj) {
+                        setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 100} : h));
+                    }
                     if (mode === 'slots') {
                         setTimeout(() => setSlotStops([true, false, false]), 100);
                         setTimeout(() => setSlotStops([true, true, false]), 600);
                         setTimeout(() => setSlotStops([true, true, true]), 1200);
                     }
+                    if (mode === 'meteor') {
+                        setImpact(true);
+                    }
                 }
                 return () => clearInterval(interval);
-            }, [isRolling, targetName, mode, winnerObj, candidates]);
+            }, [isRolling, targetName, mode, winnerObj]); // 注意依賴項
 
-            // Render Modes
+            // 1. 賽馬
             if (mode === 'race') return (
                 <div className="w-full max-w-5xl flex flex-col gap-2 relative p-4 bg-black/40 rounded-xl border border-white/20">
                     <div className="absolute right-4 top-0 bottom-0 w-1 bg-yellow-400 z-10 opacity-50"></div>
@@ -156,6 +211,8 @@
                     ))}
                 </div>
             );
+
+            // 2. 夾娃娃
             if (mode === 'claw') return (
                 <div className="relative w-[360px] h-[480px] border-8 border-pink-400 rounded-t-3xl bg-black/30 overflow-hidden mx-auto shadow-2xl">
                     <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-2 bg-gray-300 transition-all duration-1000 ${isRolling?'h-40':targetName?'h-60':'h-20'}`}><div className={`absolute bottom-0 left-1/2 -translate-x-1/2 text-6xl claw-grabber ${isRolling?'grabbing':''}`}>👾</div></div>
@@ -163,6 +220,8 @@
                     {!isRolling && targetName && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 text-center animate__animated animate__zoomIn"><div className="text-9xl mb-2">{winnerObj?.avatar}</div><div className="bg-white text-pink-600 px-6 py-2 rounded-full font-black text-2xl shadow-lg border-4 border-pink-500">{targetName}</div></div>}
                 </div>
             );
+
+            // 3. 拉霸
             if (mode === 'slots') {
                 const strip = [...candidates, ...candidates, ...candidates].slice(0, 30);
                 return (
@@ -178,21 +237,60 @@
                     </div>
                 );
             }
-            if (mode === 'meteor') return (<div className={`relative w-full h-full flex flex-col items-center justify-center ${isRolling ? '' : 'animate-impact'}`}>{isRolling && <div className="text-white/50 text-2xl animate-pulse">✨ 許願中... ✨</div>}{!isRolling && targetName && <div className="z-20 text-center relative"><div className="text-[150px] animate__animated animate__zoomInDown mb-4 absolute top-[-100px] left-1/2 -translate-x-1/2">☄️</div><div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-yellow-300 drop-shadow-2xl animate__animated animate__fadeInUp pt-20">{targetName}</div></div>}</div>);
-            if (mode === 'retro') return (<div className="relative flex items-center justify-center"><div className="absolute top-[-40px] text-6xl z-20 text-white drop-shadow-md">⬇</div><div className={`w-[400px] h-[400px] rounded-full border-8 border-yellow-500 bg-red-800 flex items-center justify-center shadow-2xl ${isRolling ? 'animate-spin' : ''}`} style={{animationDuration: '0.2s'}}><div className={`w-32 h-32 bg-white rounded-full flex items-center justify-center z-10 border-4 border-gray-300 ${!isRolling ? 'animate__animated animate__zoomIn' : ''}`}>{!isRolling && targetName ? <div className="text-center"><div className="text-4xl">{winnerObj?.avatar}</div><div className="text-xl font-bold text-red-600 max-w-[100px] truncate">{targetName}</div></div> : <div className="text-4xl font-black text-gray-300">SPIN</div>}</div></div></div>);
-            if (mode === 'magic') return (<div className="flex items-center justify-center"><div className={`relative w-72 h-[420px] transition-all duration-1000 transform-style-3d ${!isRolling && targetName ? 'flipped' : ''} card-flip`}><div className="card-face absolute inset-0 bg-purple-900 rounded-2xl border-4 border-yellow-400 flex items-center justify-center shadow-2xl backface-hidden"><div className="text-8xl opacity-30">🔮</div></div><div className="card-face card-back absolute inset-0 bg-white rounded-2xl border-4 border-purple-600 flex flex-col items-center justify-center shadow-2xl backface-hidden"><div className="text-9xl mb-6">{winnerObj?.avatar}</div><div className="text-4xl font-bold text-purple-900">{targetName}</div></div></div></div>);
-            return (<div className="flex flex-col items-center justify-center text-center"><div className={`text-9xl font-black neon-text transition-all duration-300 ${isRolling ? 'opacity-70 blur-sm scale-95' : 'opacity-100 scale-110 text-yellow-300'}`}>{display}</div>{mode === 'space' && isRolling && <div className="text-green-400 mt-8 text-xl tracking-[0.5em] animate-pulse">RADAR SCANNING...</div>}</div>);
+            
+            // 4. 流星
+            if (mode === 'meteor') return (
+                <div className={`relative w-full h-full flex flex-col items-center justify-center ${impact ? 'animate-impact' : ''}`}>
+                    {isRolling && <div className="text-white/50 text-2xl animate-pulse">✨ 許願中... ✨</div>}
+                    {!isRolling && targetName && (
+                        <div className="z-20 text-center relative">
+                             <div className="text-[150px] animate__animated animate__zoomInDown mb-4 absolute top-[-100px] left-1/2 -translate-x-1/2">☄️</div>
+                             <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-yellow-300 drop-shadow-2xl animate__animated animate__fadeInUp pt-20">{targetName}</div>
+                        </div>
+                    )}
+                </div>
+            );
+
+            // 5. 幸運轉盤
+            if (mode === 'retro') return (
+                <div className="relative flex items-center justify-center">
+                    <div className="absolute top-[-40px] text-6xl z-20 text-white drop-shadow-md">⬇</div>
+                    <div className={`w-[400px] h-[400px] rounded-full border-8 border-yellow-500 bg-red-800 flex items-center justify-center shadow-2xl ${isRolling ? 'animate-spin' : ''}`} style={{animationDuration: '0.2s'}}>
+                        <div className={`w-32 h-32 bg-white rounded-full flex items-center justify-center z-10 border-4 border-gray-300 ${!isRolling ? 'animate__animated animate__zoomIn' : ''}`}>
+                            {!isRolling && targetName ? <div className="text-center"><div className="text-4xl">{winnerObj?.avatar}</div><div className="text-xl font-bold text-red-600 max-w-[100px] truncate">{targetName}</div></div> : <div className="text-4xl font-black text-gray-300">SPIN</div>}
+                        </div>
+                    </div>
+                </div>
+            );
+            
+            // 6. 塔羅
+            if (mode === 'magic') return (
+                <div className="flex items-center justify-center">
+                     <div className={`relative w-72 h-[420px] transition-all duration-1000 transform-style-3d ${!isRolling && targetName ? 'flipped' : ''} card-flip`}>
+                         <div className="card-face absolute inset-0 bg-purple-900 rounded-2xl border-4 border-yellow-400 flex items-center justify-center shadow-2xl backface-hidden"><div className="text-8xl opacity-30">🔮</div></div>
+                         <div className="card-face card-back absolute inset-0 bg-white rounded-2xl border-4 border-purple-600 flex flex-col items-center justify-center shadow-2xl backface-hidden"><div className="text-9xl mb-6">{winnerObj?.avatar}</div><div className="text-4xl font-bold text-purple-900">{targetName}</div></div>
+                     </div>
+                </div>
+            );
+
+            // 7. 預設 (矩陣/雷達)
+            return (
+                <div className="flex flex-col items-center justify-center text-center">
+                    <div className={`text-9xl font-black neon-text transition-all duration-300 ${isRolling ? 'opacity-70 blur-sm scale-95' : 'opacity-100 scale-110 text-yellow-300'}`}>{display}</div>
+                    {mode === 'space' && isRolling && <div className="text-green-400 mt-8 text-xl tracking-[0.5em] animate-pulse">RADAR SCANNING...</div>}
+                </div>
+            );
         };
 
         // --- 1. Index Page ---
-        const IndexPage = ({ onStartHost }) => {
+        const IndexPage = ({ onStartHost, initialPlayers }) => {
             const [qrUrl, setQrUrl] = useState('');
             const [roomId, setRoomId] = useState('');
-            const [players, setPlayers] = useState([]);
+            const [players, setPlayers] = useState(initialPlayers || []);
             
             const { status } = useSocket(roomId, (evt, data) => {
                 if (evt === 'player_list_update') setPlayers(data);
-                else if (evt === 'init_data') setPlayers(data.players || []);
+                else if (evt === 'init_data' && data.players) setPlayers(data.players);
                 else if (evt === 'game_reset') setPlayers([]);
             });
 
@@ -219,7 +317,7 @@
                             <div className="bg-white p-4 rounded-3xl shadow-inner">{qrUrl ? <img src={qrUrl} className="w-64 h-64 object-contain" /> : <div className="w-64 h-64 flex items-center justify-center text-red-300">Generating...</div>}</div>
                             <div className="text-center"><div className="text-yellow-400 font-black text-4xl mb-1">{players.length} 人</div><div className="text-red-200 text-sm font-bold uppercase">已加入連線</div></div>
                         </div>
-                        <div className="absolute bottom-8 right-8"><button onClick={() => onStartHost(roomId, players)} className="bg-gradient-to-r from-yellow-600 to-yellow-500 text-red-900 px-8 py-4 rounded-full font-black text-xl shadow-lg hover:scale-105 transition-transform">進入大螢幕抽獎 →</button></div>
+                        <div className="absolute bottom-8 right-8"><button onClick={() => {sessionStorage.setItem(`lottery_players_${roomId}`, JSON.stringify(players)); window.location.search = `?mode=host&room=${roomId}`;}} className="bg-gradient-to-r from-yellow-600 to-yellow-500 text-red-900 px-8 py-4 rounded-full font-black text-xl shadow-lg hover:scale-105 transition-transform">進入大螢幕抽獎 →</button></div>
                     </div>
                 </div>
             );
@@ -233,17 +331,17 @@
             const [joined, setJoined] = useState(false);
             const [gameStatus, setGameStatus] = useState({ status: 'lobby' }); 
             const { status, emit } = useSocket(room, (evt, data) => {
-                if(evt === 'game_status_update') setGameStatus(data);
-                if(evt === 'game_reset') { localStorage.removeItem('lottery_user'); setUser(null); setJoined(false); alert("活動已重置"); }
+                if (evt === 'game_status_update') setGameStatus(data);
+                if (evt === 'game_reset') { localStorage.removeItem('lottery_user'); setUser(null); setJoined(false); alert("活動已重置"); }
             });
             useEffect(() => { try { const u = JSON.parse(localStorage.getItem('lottery_user')); if (u) { setUser(u); setJoined(true); } } catch(e){} }, []);
             useEffect(() => { if (status === 'connected' && joined && user) emit('player_join', { user }); }, [status, joined]);
             const handleJoin = () => { if(!nameInput.trim()) return; const newUser = { id: Date.now()+Math.random().toString().slice(2), name: nameInput.trim(), avatar: myAvatar }; setUser(newUser); setJoined(true); localStorage.setItem('lottery_user', JSON.stringify(newUser)); emit('player_join', { user: newUser }); };
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
-
+            
             if(isWinner) return <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 to-black animate__animated animate__fadeIn"><div className="bg-rays"></div><div className="relative z-10 text-center p-6 animate__animated animate__zoomInDown"><div className="text-[10rem] mb-4 animate__animated animate__tada infinite">🏆</div><h1 className="text-5xl font-black text-yellow-400 drop-shadow-xl mb-4">恭喜中獎！</h1><p className="text-xl text-white">本回合的幸運兒就是你</p><div className="mt-8 glass-panel p-6 rounded-2xl flex flex-col items-center gap-4"><div className="text-6xl">{user?.avatar}</div><div className="text-3xl font-bold text-white">{user?.name}</div><div className="bg-red-600 px-6 py-2 rounded-full font-bold animate-pulse">請前往台前領獎</div></div></div></div>;
             if(!joined) return <div className="min-h-screen bg-gradient-to-br from-red-900 to-black p-6 flex flex-col justify-center"><div className="w-full max-w-md mx-auto space-y-8 animate__animated animate__fadeIn"><div className="text-center"><h1 className="text-4xl font-black text-yellow-400">JOIN PARTY</h1><p className="text-red-200">輸入暱稱，加入盛典</p></div><div className="glass-panel rounded-3xl p-6 space-y-6"><div className="grid grid-cols-4 gap-3">{AVATARS.slice(0, 12).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-3xl rounded-xl p-2 ${myAvatar === a ? 'bg-red-800 border-2 border-yellow-400' : 'bg-white/10'}`}>{a}</button>)}</div><input type="text" className="w-full bg-white/10 border border-white/20 rounded-xl p-4 text-center text-xl text-white outline-none focus:border-yellow-400" placeholder="例如: 小明" value={nameInput} onChange={e => setNameInput(e.target.value)} /><button onClick={handleJoin} className="w-full bg-gradient-to-r from-yellow-500 to-orange-600 text-red-900 py-4 rounded-xl text-xl font-black shadow-lg">🚀 立即加入</button></div></div></div>;
-            return <div className="min-h-screen bg-gradient-to-b from-red-900 to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden"><div className="absolute top-4 left-4 text-xs flex gap-2"><span className={`px-3 py-1 rounded-full ${status==='connected'?'bg-green-500 text-black':'bg-red-500'}`}>{status==='connected'?'連線正常':'連線中...'}</span><div className="text-white/30 text-xs">Status: {gameStatus.status}</div></div>{gameStatus.status === 'playing' ? <div className="space-y-8 animate__animated animate__pulse infinite relative z-10"><div className="text-[8rem] animate-spin">🎲</div><div className="text-3xl font-black text-yellow-400">抽獎進行中...</div><div className="text-red-200">第 {gameStatus.round} 回合</div></div> : <div className="w-full space-y-8 animate__animated animate__fadeIn relative z-10"><div className="relative group"><div className="w-40 h-40 mx-auto bg-red-800 rounded-full flex items-center justify-center text-7xl border-4 border-yellow-500 shadow-2xl">{user.avatar}</div></div><div><h2 className="text-5xl font-black mb-3">{user.name}</h2><div className="inline-flex items-center px-5 py-2 rounded-full bg-green-900/50 text-green-400 border border-green-500/30">● 已連線 Ready</div></div>{gameStatus.winnerName && <div className="glass-panel p-6 rounded-2xl animate__animated animate__fadeInUp"><p className="text-yellow-500 text-xs mb-2">上回合得主</p><div className="text-3xl font-black">{gameStatus.winnerName}</div></div>}<div className="text-red-300/50">等待主持人開始...</div></div>}<button onClick={()=>{if(confirm("登出?")){localStorage.removeItem('lottery_user');window.location.reload();}}} className="absolute bottom-6 text-white/30 text-sm underline z-20">登出</button></div>;
+            return <div className="min-h-screen bg-gradient-to-b from-red-900 to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden"><div className="absolute top-4 left-4 text-xs flex gap-2"><span className={`px-3 py-1 rounded-full ${status==='connected'?'bg-green-500 text-black':'bg-red-500'}`}>{status==='connected'?'連線正常':'連線中...'}</span></div>{gameStatus.status === 'playing' ? <div className="space-y-8 animate__animated animate__pulse infinite relative z-10"><div className="text-[8rem] animate-spin">🎲</div><div className="text-3xl font-black text-yellow-400">抽獎進行中...</div><div className="text-red-200">第 {gameStatus.round} 回合</div></div> : <div className="w-full space-y-8 animate__animated animate__fadeIn relative z-10"><div className="relative group"><div className="w-40 h-40 mx-auto bg-red-800 rounded-full flex items-center justify-center text-7xl border-4 border-yellow-500 shadow-2xl">{user.avatar}</div></div><div><h2 className="text-5xl font-black mb-3">{user.name}</h2><div className="inline-flex items-center px-5 py-2 rounded-full bg-green-900/50 text-green-400 border border-green-500/30">● 已連線 Ready</div></div>{gameStatus.winnerName && <div className="glass-panel p-6 rounded-2xl animate__animated animate__fadeInUp"><p className="text-yellow-500 text-xs mb-2">上回合得主</p><div className="text-3xl font-black">{gameStatus.winnerName}</div></div>}<div className="text-red-300/50">等待主持人開始...</div></div>}<button onClick={()=>{if(confirm("登出?")){localStorage.removeItem('lottery_user');window.location.reload();}}} className="absolute bottom-6 text-white/30 text-sm underline z-20">登出</button></div>;
         };
 
         // --- 3. Host App ---
