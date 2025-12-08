@@ -5,20 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>家防中心尾牙盛典</title>
     
+    <!-- CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Noto+Sans+TC:wght@400;900&display=swap" rel="stylesheet">
     
-    <!-- React & Babel (CDN) -->
+    <!-- 1. 載入 React 核心 (使用 unpkg) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Tools -->
+    <!-- 2. 載入工具庫 (確保 CDN 連結正確) -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    
-    <!-- Socket.io Client (改用 CDN，解決白屏問題) -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <style>
@@ -46,19 +45,44 @@
         @keyframes impactShake { 0%, 100% { transform: translate(0, 0); } 10%, 30%, 50%, 70%, 90% { transform: translate(-10px, 10px); } 20%, 40%, 60%, 80% { transform: translate(10px, -10px); } }
         .animate-impact { animation: impactShake 0.5s ease-in-out; }
         @keyframes meteorDrop { 0% { transform: translate(100%, -100%) scale(0.5); opacity: 1; } 70% { transform: translate(0, 0) scale(1.5); opacity: 1; } 100% { transform: translate(-20%, 20%) scale(0.2); opacity: 0; } }
+        
+        #root:empty::before {
+            content: "系統載入中... Please Wait...";
+            display: block;
+            text-align: center;
+            margin-top: 40vh;
+            color: #fbbf24;
+            font-size: 1.5rem;
+            animation: pulse 2s infinite;
+        }
     </style>
 </head>
 <body>
     <div id="root"></div>
+    
+    <!-- 錯誤顯示區 (隱藏，出錯時顯示) -->
+    <div id="error-box" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:red; z-index:9999; padding:20px; overflow:auto;">
+        <h2 style="font-size:24px; font-weight:bold; margin-bottom:10px;"⚠️ 程式發生錯誤</h2>
+        <pre id="error-msg" style="white-space:pre-wrap; font-family:monospace;"></pre>
+        <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:white; color:black; border:none; border-radius:5px;">重新整理</button>
+    </div>
+
+    <script>
+        // 全域錯誤攔截
+        window.onerror = function(message, source, lineno, colno, error) {
+            document.getElementById('error-box').style.display = 'block';
+            document.getElementById('error-msg').innerText = `${message}\nSource: ${source}:${lineno}`;
+        };
+    </script>
 
     <script type="text/babel">
-        // 使用全域變數
+        // 確保變數從全域取得
         const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
 
-        // --- 錯誤邊界元件 (防止白屏) ---
+        // --- Error Boundary ---
         class ErrorBoundary extends Component {
             constructor(props) {
                 super(props);
@@ -71,13 +95,9 @@
                 if (this.state.hasError) {
                     return (
                         <div className="h-screen flex flex-col items-center justify-center p-6 bg-red-900 text-white text-center">
-                            <h1 className="text-3xl font-bold mb-4"⚠️ 發生錯誤</h1>
-                            <div className="bg-black/50 p-4 rounded text-left font-mono text-xs overflow-auto max-w-full mb-4">
-                                {this.state.error && this.state.error.toString()}
-                            </div>
-                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-white text-red-900 px-6 py-3 rounded-full font-bold">
-                                清除快取並重整
-                            </button>
+                            <h1 className="text-3xl font-bold mb-4">React Error</h1>
+                            <div className="bg-black/50 p-4 rounded text-left text-xs mb-4">{this.state.error.toString()}</div>
+                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-white text-red-900 px-6 py-3 rounded-full font-bold">重置</button>
                         </div>
                     );
                 }
@@ -85,9 +105,7 @@
             }
         }
 
-        // =================================================================
-        //  Socket Hook (連線核心)
-        // =================================================================
+        // --- Socket Hook ---
         const useSocket = (roomId, onEvent) => {
             const socketRef = useRef(null);
             const [status, setStatus] = useState('connecting');
@@ -95,17 +113,15 @@
             useEffect(() => {
                 if(!roomId) return;
                 
-                // 檢查 io 是否存在 (防呆)
+                // 檢查 io 是否載入
                 if (typeof io === 'undefined') {
-                    console.error("Socket.io library not loaded!");
                     setStatus('error-lib-missing');
+                    console.error("Socket.io not loaded");
                     return;
                 }
 
-                // 自動連線到伺服器
-                // 注意：如果是在本地開發(Live Server)，這裡會連到 Live Server 的 Port 而不是 Node Server
-                // 建議在 server.js 啟動的網址下執行
-                const socket = io(); 
+                // 連線到伺服器 (Render)
+                const socket = io();
                 socketRef.current = socket;
 
                 socket.on('connect', () => {
@@ -115,12 +131,7 @@
                 });
 
                 socket.on('disconnect', () => setStatus('disconnected'));
-                socket.on('connect_error', (err) => {
-                    console.error("Conn Error:", err);
-                    setStatus('error');
-                });
-
-                // 統一事件處理
+                
                 socket.on('player_list_update', (data) => onEvent && onEvent('player_list_update', data));
                 socket.on('game_status_update', (data) => onEvent && onEvent('game_status_update', data));
                 socket.on('init_data', (data) => onEvent && onEvent('init_data', data));
@@ -130,23 +141,18 @@
             }, [roomId]);
 
             const emit = (event, data) => {
-                if (socketRef.current) {
-                    socketRef.current.emit(event, { roomId, ...data });
-                }
+                if (socketRef.current) socketRef.current.emit(event, { roomId, ...data });
             };
 
             return { status, emit };
         };
 
-        // =================================================================
-        //  1. 迎賓大廳 (Index Page)
-        // =================================================================
+        // --- 1. 迎賓大廳 ---
         const IndexPage = ({ onStartHost, initialPlayers }) => {
             const [qrUrl, setQrUrl] = useState('');
             const [roomId, setRoomId] = useState('');
             const [players, setPlayers] = useState(initialPlayers || []);
             
-            // 使用 Socket 監聽
             const { status } = useSocket(roomId, (event, data) => {
                 if (event === 'player_list_update' || (event === 'init_data' && data.players)) {
                     setPlayers(data.players || (data.length ? data : []));
@@ -197,7 +203,7 @@
                 <div className="min-h-screen relative overflow-hidden font-sans" style={{background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)'}}>
                     <div className="absolute top-4 left-4 z-20 flex gap-2 items-center">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'connected' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
-                            {status === 'connected' ? '● 伺服器連線正常' : '● 連線中...'}
+                            {status === 'connected' ? '● 連線正常' : '● 連線中...'}
                         </span>
                         <span className="text-white/50 text-xs">Room: {roomId}</span>
                     </div>
@@ -227,9 +233,7 @@
             );
         };
 
-        // =================================================================
-        //  2. 玩家端 (Player App)
-        // =================================================================
+        // --- 2. 玩家端 ---
         const PlayerApp = ({ room }) => {
             const [user, setUser] = useState(null);
             const [nameInput, setNameInput] = useState("");
@@ -278,7 +282,6 @@
                         }
                     }
                 } catch(e) {
-                    console.error(e);
                     localStorage.removeItem('lottery_user');
                 }
             }, []);
@@ -341,9 +344,7 @@
             );
         };
 
-        // =================================================================
-        //  3. 大螢幕端 (Host App)
-        // =================================================================
+        // --- 3. 大螢幕端 ---
         const HostApp = ({ room, initialPlayers }) => {
             const [allPlayers, setAllPlayers] = useState(initialPlayers || []);
             const [winners, setWinners] = useState([]); 
@@ -373,7 +374,7 @@
                 }
             });
 
-            // 視覺組件 (簡化)
+            // 視覺組件
             const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
                 const [display, setDisplay] = useState("READY");
                 useEffect(() => {
@@ -518,6 +519,7 @@
             );
         };
 
+        // --- App Entry ---
         const App = () => {
             const [mode, setMode] = useState('index');
             const [room, setRoom] = useState('');
