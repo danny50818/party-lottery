@@ -27,17 +27,24 @@ if (fs.existsSync(indexPath)) {
 // 設定靜態檔案服務
 app.use(express.static(rootPath));
 
-// 記憶體資料庫
+// 記憶體資料庫 (儲存房間狀態)
 const rooms = {};
 
 io.on('connection', (socket) => {
+    // console.log('Client connected:', socket.id);
+
     // --- 加入房間 ---
     socket.on('join_room', (roomId) => {
         socket.join(roomId);
+        
+        // 初始化房間
         if (!rooms[roomId]) {
             rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
         }
+
+        // 發送目前的玩家名單給剛連線的人
         socket.emit('init_data', rooms[roomId]);
+        // 同步目前的遊戲狀態
         socket.emit('game_status_update', rooms[roomId].gameState);
     });
 
@@ -45,6 +52,7 @@ io.on('connection', (socket) => {
     socket.on('player_join', ({ roomId, user }) => {
         if (!rooms[roomId]) return; 
 
+        // 避免重複加入
         const existingPlayer = rooms[roomId].players.find(p => p.id === user.id);
         if (!existingPlayer) {
             rooms[roomId].players.push(user);
@@ -52,22 +60,29 @@ io.on('connection', (socket) => {
             Object.assign(existingPlayer, user);
         }
 
+        // 廣播給房間內所有人
         io.to(roomId).emit('player_list_update', rooms[roomId].players);
     });
 
     // --- 遊戲狀態更新 (來自大螢幕) ---
     socket.on('update_game_status', ({ roomId, status }) => {
         if (!rooms[roomId]) return;
+        
         rooms[roomId].gameState = status;
         // 廣播給房間內所有手機
         io.to(roomId).emit('game_status_update', status);
     });
 
-    // --- 重置遊戲 ---
+    // --- [關鍵新增] 重置遊戲 ---
     socket.on('reset_game', ({ roomId }) => {
         if (!rooms[roomId]) return;
+        
         console.log(`Room ${roomId} has been reset.`);
+        
+        // 清空資料
         rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
+        
+        // 廣播重置訊號
         io.to(roomId).emit('game_reset');
         io.to(roomId).emit('init_data', rooms[roomId]);
     });
