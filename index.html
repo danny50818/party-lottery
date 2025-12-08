@@ -18,8 +18,8 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     
-    <!-- Socket.io Client (自動適應 Render 伺服器路徑) -->
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- Socket.io Client (改用 CDN，確保絕對能載入) -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
     <style>
         body { margin: 0; overflow: hidden; font-family: "Noto Sans TC", sans-serif; background: #450a0a; color: white; }
@@ -68,8 +68,15 @@
             useEffect(() => {
                 if(!roomId) return;
                 
+                // 檢查 io 是否存在 (防呆)
+                if (typeof io === 'undefined') {
+                    console.error("Socket.io library not loaded!");
+                    setStatus('error-lib-missing');
+                    return;
+                }
+
                 // 自動連線到當前伺服器 (Render)
-                // io 是全域變數 (來自 socket.io.js)
+                // io 是全域變數 (來自 socket.io.min.js CDN)
                 const socket = io(); 
                 socketRef.current = socket;
 
@@ -80,7 +87,10 @@
                 });
 
                 socket.on('disconnect', () => setStatus('disconnected'));
-                socket.on('connect_error', () => setStatus('error'));
+                socket.on('connect_error', (err) => {
+                    console.error("Conn Error:", err);
+                    setStatus('error');
+                });
 
                 // 統一事件處理
                 socket.on('player_list_update', (data) => onEvent && onEvent('player_list_update', data));
@@ -126,9 +136,11 @@
                 const playerLink = `${baseUrl}?mode=player&room=${rid}`;
                 
                 // QRCode 是全域變數 (來自 qrcode.min.js)
-                QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (err, url) => {
-                    if(!err) setQrUrl(url);
-                });
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (err, url) => {
+                        if(!err) setQrUrl(url);
+                    });
+                }
             }, []);
 
             const PlayerBubble = ({ player }) => {
@@ -232,6 +244,11 @@
             }, []);
 
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
+
+            // 如果有程式庫載入錯誤，顯示提示
+            if (status === 'error-lib-missing') {
+                return <div className="h-screen flex items-center justify-center text-red-500">Error: Socket.io library failed to load.</div>;
+            }
 
             if (isWinner) return (
                 <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 to-black">
