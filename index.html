@@ -36,25 +36,13 @@
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
             background-color: #2b0000; /* 深紅底色 */
             color: #fff;
-            font-weight: bold;
             image-rendering: pixelated;
         }
 
         /* 8-Bit UI 元件 */
-        .pixel-box {
-            background: #fff; border: 4px solid #000; color: #000;
-            box-shadow: -4px 0 0 0 #000, 4px 0 0 0 #000, 0 -4px 0 0 #000, 0 4px 0 0 #000;
-        }
-        .pixel-box-dark {
-            background: #000; border: 4px solid #fff; color: #fff;
-            box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff;
-        }
-        .pixel-btn {
-            border: 4px solid rgba(0,0,0,0.4); 
-            cursor: pointer; transition: transform 0.1s;
-            box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3);
-            font-family: 'Press Start 2P', cursive;
-        }
+        .pixel-box { background: #fff; border: 4px solid #000; color: #000; box-shadow: -4px 0 0 0 #000, 4px 0 0 0 #000, 0 -4px 0 0 #000, 0 4px 0 0 #000; }
+        .pixel-box-dark { background: #000; border: 4px solid #fff; color: #fff; box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff; }
+        .pixel-btn { border: 4px solid rgba(0,0,0,0.4); cursor: pointer; transition: transform 0.1s; box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3); font-family: 'Press Start 2P', cursive; }
         .pixel-btn:active { transform: translateY(4px); }
         .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; text-shadow: none; }
 
@@ -66,17 +54,11 @@
         }
         .retro-grid {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                linear-gradient(to right, rgba(255, 50, 50, 0.4) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 50, 50, 0.4) 1px, transparent 1px);
+            background-image: linear-gradient(to right, rgba(255, 50, 50, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 50, 50, 0.4) 1px, transparent 1px);
             background-size: 60px 60px;
             animation: grid-scroll 3s linear infinite;
         }
-        .retro-grid-mask {
-            position: fixed; top: 0; left: 0; width: 100%; height: 60%;
-            background: linear-gradient(to bottom, #1a0000 0%, transparent 40%, #1a0000 100%);
-            z-index: -1; pointer-events: none;
-        }
+        .retro-grid-mask { position: fixed; top: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to bottom, #1a0000 0%, transparent 40%, #1a0000 100%); z-index: -1; pointer-events: none; }
         @keyframes grid-scroll { 0% { transform: translateY(0); } 100% { transform: translateY(60px); } }
 
         /* Loading */
@@ -93,6 +75,14 @@
         .claw-arm-dropping { animation: claw-drop-anim 2s ease-in-out forwards; }
         @keyframes block-bump { 0% { transform: translateY(0); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0); } }
         .block-bump-anim { animation: block-bump 0.3s ease-out; }
+        @keyframes mario-run { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
+        .mario-running { animation: mario-run 0.15s steps(2) infinite; }
+        @keyframes mario-jump { 0% { bottom: 24%; } 50% { bottom: 50%; } 100% { bottom: 24%; } }
+        .mario-jump-anim { animation: mario-jump 0.5s ease-out; }
+        @keyframes impactShake { 0%, 100% { transform: translate(0, 0); } 10%, 90% { transform: translate(-5px, 5px); } 50% { transform: translate(5px, -5px); } }
+        .animate-impact { animation: impactShake 0.5s ease-in-out; }
+        @keyframes laser-shoot { 0% { bottom: 80px; opacity: 1; } 100% { bottom: 100%; opacity: 0; } }
+        .laser-beam { position: absolute; width: 6px; height: 20px; background: #0f0; animation: laser-shoot 0.3s linear infinite; }
     </style>
 </head>
 <body>
@@ -157,14 +147,13 @@
             const [marioState, setMarioState] = useState('running'); 
             const [shooterState, setShooterState] = useState('idle');
 
-            // 格式化編號
             const getDisplayName = (player) => {
                 const index = candidates.findIndex(p => p.id === player.id) + 1;
                 return `No.${index}`;
             };
             const getDisplayString = (player) => {
                 const index = candidates.findIndex(p => p.id === player.id) + 1;
-                return `No.${index} - ${player.name}`;
+                return `${getDisplayName(player)} - ${player.name}`;
             };
             
             useEffect(() => {
@@ -175,6 +164,7 @@
                     setCardFlipped(false);
                     setMarioState('running');
                     setShooterState('moving');
+                    setImpact(false);
 
                     if (mode === 'race') {
                         const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: getDisplayName(p), progress: 0}));
@@ -183,12 +173,7 @@
                         interval = setInterval(() => {
                             setHorses(prev => prev.map(h => ({...h, progress: Math.min(88, h.progress + Math.random() * 2)})));
                         }, 100);
-                    } else if (mode === 'slots') {
-                         // Slots
-                    } else if (mode === 'adventure') {
-                         setMarioState('running');
-                    } else {
-                        // 通用文字跳動 (顯示編號)
+                    } else if (mode !== 'slots' && mode !== 'claw' && mode !== 'retro' && mode !== 'magic') {
                         interval = setInterval(() => {
                             const randomIdx = Math.floor(Math.random() * candidates.length);
                             setDisplay(`No.${randomIdx + 1}`);
@@ -197,9 +182,7 @@
                 } else if (targetName) {
                     setDisplay(targetName);
                     
-                    if (mode === 'race' && winnerObj) {
-                        setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 95} : h));
-                    }
+                    if (mode === 'race' && winnerObj) { setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 95} : h)); }
                     if (mode === 'slots') {
                         setTimeout(() => setSlotStops([true, false, false]), 100);
                         setTimeout(() => setSlotStops([true, true, false]), 600);
@@ -213,8 +196,6 @@
                 }
                 return () => clearInterval(interval);
             }, [isRolling, targetName, mode, winnerObj, candidates]);
-
-            // --- 渲染各模式 ---
 
             // 1. 賽馬 (Race)
             if (mode === 'race') return (
@@ -396,10 +377,10 @@
                     <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
                         <div className="text-center mb-8 animate__animated animate__bounceIn"><div className="inline-block bg-red-900/80 px-8 py-2 rounded-full border border-yellow-500/50 text-yellow-300 font-bold mb-6">歡迎蒞臨</div><h1 className="text-4xl md:text-6xl text-white drop-shadow-[4px_4px_0_#000] leading-tight mb-4">家防中心<br/>尾牙盛典</h1><div className="inline-block bg-red-600 border-4 border-white text-white px-4 py-2 text-sm shadow-[4px_4px_0_#000]">SCAN QR TO JOIN</div></div>
                         <div className="pixel-box p-4 bg-white flex flex-col items-center gap-4 transform hover:scale-105 transition-transform">
-                            <div className="bg-white p-4 rounded-3xl shadow-inner">{qrUrl ? <img src={qrUrl} className="w-48 h-48 image-pixelated" /> : <div className="w-48 h-48 flex items-center justify-center text-black">LOADING...</div>}</div>
+                            <div className="bg-white p-4 rounded-3xl shadow-inner">{qrUrl ? <img src={qrUrl} className="w-48 h-48 object-contain" /> : <div className="w-48 h-48 flex items-center justify-center text-black">LOADING...</div>}</div>
                             <div className="text-center text-black"><div className="text-2xl mb-1">{players.length} P</div><div className="text-xs">READY</div></div>
                         </div>
-                        <div className="absolute bottom-10 right-10"><button onClick={() => onStartHost(roomId, players)} className="pixel-btn pixel-btn-yellow px-6 py-4 text-xs animate-bounce text-black">主持人入口 &gt;</button></div>
+                        <div className="absolute bottom-10 right-10"><button onClick={() => onStartHost(roomId, players)} className="pixel-btn pixel-btn-yellow px-6 py-4 text-xs animate-bounce text-black pixel-btn-yellow">主持人入口 &gt;</button></div>
                     </div>
                 </div>
             );
@@ -422,7 +403,7 @@
             
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
 
-            if(isWinner) return <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center"><div className="animate__animated animate__tada animate__infinite text-9xl mb-6">🏆</div><div className="pixel-box-dark p-6 mb-4"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div><div className="pixel-box p-4 flex flex-col items-center"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">No.{user?.id ? 'N/A' : '0'} - {user?.name}</div></div></div>;
+            if(isWinner) return <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center"><div className="animate__animated animate__tada animate__infinite text-9xl mb-6">🏆</div><div className="pixel-box-dark p-6 mb-4"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div><div className="pixel-box p-4 flex flex-col items-center"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">{user?.name}</div></div></div>;
             if(!joined) return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4"><div className="pixel-box p-6 w-full max-w-sm text-center"><h1 className="text-xl mb-6 text-blue-600">PLAYER JOIN</h1><div className="grid grid-cols-4 gap-2 mb-6">{AVATARS.slice(0, 8).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-2xl p-2 border-2 ${myAvatar === a ? 'border-blue-500 bg-blue-100' : 'border-transparent'}`}>{a}</button>)}</div><input type="text" className="w-full border-4 border-black p-3 font-mono text-center mb-6 text-black" placeholder="YOUR NAME" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={8} /><button onClick={handleJoin} className="pixel-btn pixel-btn-blue w-full py-4 text-lg">ENTER</button></div></div>;
             return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4"><div className="absolute top-2 right-2 text-[10px] text-green-400">{status}</div>{gameStatus.status === 'playing' ? <div className="text-center animate-pulse"><div className="text-6xl mb-4">🎲</div><div className="text-yellow-400 text-xl">ROLLING...</div></div> : <div className="text-center w-full max-w-sm"><div className="pixel-box-dark p-8 mb-6"><div className="text-6xl mb-4">{user.avatar}</div><div className="text-2xl text-yellow-400">{user.name}</div><div className="mt-4 text-xs text-green-400 border border-green-400 px-2 py-1 inline-block">READY</div></div></div>}</div>;
         };
@@ -484,15 +465,18 @@
                 for (let i = 0; i < winnersList.length; i++) {
                     const w = winnersList[i];
                     
+                    // 滾動階段
                     setDisplayState({ rolling: true, winner: null, text: "ROLLING" });
                     
                     await new Promise(r => setTimeout(r, duration)); 
                     
-                    setDisplayState({ rolling: false, winner: w, text: `No.${allPlayers.indexOf(w)+1}` });
+                    // 揭曉
+                    setDisplayState({ rolling: false, winner: w, text: `No.${allPlayers.findIndex(p => p.id === w.id)+1}` });
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                     
                     await new Promise(r => setTimeout(r, 2000)); 
                     
+                    // 彈窗停留
                     await new Promise(r => setTimeout(r, 5000));
                     
                     emit('update_game_status', { status: { status: 'result', winnerName: w.name, winnerId: w.id } });
@@ -500,7 +484,6 @@
                 setIsDrawing(false);
             };
 
-            // 遊戲視覺 (已優化並獨立)
             return (
                 <div className="h-screen bg-gray-900 flex flex-col relative overflow-hidden">
                     <div className="retro-grid-mask"></div><div className="retro-grid-container"><div className="retro-grid"></div></div>
@@ -510,7 +493,7 @@
                             <div className="text-center animate__animated animate__zoomInDown">
                                 <div className="pixel-box-dark p-12 border-8 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.5)]">
                                     <div className="text-9xl mb-6 animate-bounce">{displayState.winner.avatar}</div>
-                                    <div className="text-5xl font-black text-white">No.{allPlayers.indexOf(displayState.winner)+1}</div>
+                                    <div className="text-5xl font-black text-white">No.{allPlayers.findIndex(p => p.id === displayState.winner.id)+1}</div>
                                     <div className="text-2xl text-yellow-300 mt-2">{displayState.winner.name}</div>
                                     <div className="mt-8 bg-red-600 text-white px-6 py-2 text-xl inline-block">WINNER</div>
                                 </div>
