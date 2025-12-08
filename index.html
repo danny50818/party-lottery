@@ -20,49 +20,32 @@
     <!-- 3. Tools -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
 
     <style>
         /* 全域像素風格設定 */
         body { 
             margin: 0; 
             overflow: hidden; 
-            font-family: 'Press Start 2P', cursive; /* 像素字體 */
+            font-family: 'Press Start 2P', cursive; 
             background-color: #202020;
             color: #fff;
-            image-rendering: pixelated; /* 讓圖片縮放時保持鋸齒 */
+            image-rendering: pixelated;
         }
 
-        /* 像素框線 (NES 風格) */
+        /* 像素框線 */
         .pixel-box {
-            background: #fff;
-            border: 4px solid #000;
-            box-shadow: 
-                -4px 0 0 0 #000,
-                4px 0 0 0 #000,
-                0 -4px 0 0 #000,
-                0 4px 0 0 #000;
-            margin: 4px;
-            color: #000;
+            background: #fff; border: 4px solid #000; color: #000;
+            box-shadow: -4px 0 0 0 #000, 4px 0 0 0 #000, 0 -4px 0 0 #000, 0 4px 0 0 #000;
         }
         .pixel-box-dark {
-            background: #000;
-            border: 4px solid #fff;
-            box-shadow: 
-                -4px 0 0 0 #fff,
-                4px 0 0 0 #fff,
-                0 -4px 0 0 #fff,
-                0 4px 0 0 #fff;
-            color: #fff;
+            background: #000; border: 4px solid #fff; color: #fff;
+            box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff;
         }
         
         .pixel-btn {
-            background: #3b82f6;
-            color: white;
-            border: 4px solid #1d4ed8;
-            box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.5);
-            cursor: pointer;
-            transition: transform 0.1s;
+            background: #3b82f6; color: white; border: 4px solid #1d4ed8;
+            box-shadow: inset -4px -4px 0px 0px rgba(0,0,0,0.5); cursor: pointer; transition: transform 0.1s;
         }
         .pixel-btn:active { transform: translateY(4px); box-shadow: inset -2px -2px 0px 0px rgba(0,0,0,0.5); }
         .pixel-btn-red { background: #ef4444; border-color: #b91c1c; }
@@ -70,68 +53,54 @@
 
         /* 背景網格動態 */
         .bg-grid {
-            background-image: 
-                linear-gradient(transparent 95%, #333 95%),
-                linear-gradient(90deg, transparent 95%, #333 95%);
-            background-size: 40px 40px;
-            animation: gridMove 20s linear infinite;
+            background-image: linear-gradient(transparent 95%, #333 95%), linear-gradient(90deg, transparent 95%, #333 95%);
+            background-size: 40px 40px; animation: gridMove 20s linear infinite;
         }
         @keyframes gridMove { from { background-position: 0 0; } to { background-position: 0 100%; } }
 
-        /* 8-bit Loading */
+        /* Loading & Animations */
         #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .pixel-spinner {
-            width: 64px; height: 64px;
-            background: #fbbf24;
-            animation: pixel-spin 1s steps(4) infinite;
-            box-shadow: 4px 4px 0 #b45309;
-        }
+        .pixel-spinner { width: 64px; height: 64px; background: #fbbf24; animation: pixel-spin 1s steps(4) infinite; box-shadow: 4px 4px 0 #b45309; }
         @keyframes pixel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* 遊戲專屬動畫 (使用 steps 模擬逐格動畫) */
-        @keyframes run-cycle { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
-        .sprite-run { animation: run-cycle 0.2s steps(2) infinite; }
+        
+        @keyframes floatUp { 0% { transform: translateY(110vh); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-20vh); opacity: 0; } }
+        .bubble-pixel { position: absolute; animation: floatUp linear infinite; bottom: -100px; }
         
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         .blink { animation: blink 1s steps(1) infinite; }
 
-        /* 掃描線特效 (CRT Monitor Effect) */
-        .scanlines {
-            position: fixed; inset: 0; pointer-events: none; z-index: 999;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
-            background-size: 100% 4px;
-        }
+        .scanlines { position: fixed; inset: 0; pointer-events: none; z-index: 999; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <div class="scanlines"></div>
-    
     <div id="loading-screen">
         <div class="pixel-spinner mb-8"></div>
-        <div class="text-yellow-400 text-xl blink">LOADING...</div>
+        <div class="text-yellow-400 text-xl blink">LOADING SYSTEM...</div>
     </div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
-        // 8-bit 風格頭像 (Emoji 本身就是圖形，但在像素風下顯示也很搭)
         const AVATARS = ["👾", "🤖", "👻", "💀", "👽", "💩", "🐵", "🐶", "🐱", "🦊", "🐸", "🐼"];
         const removeLoading = () => { const el = document.getElementById('loading-screen'); if(el) el.style.display = 'none'; };
 
+        // --- Error Boundary ---
         class ErrorBoundary extends Component {
             constructor(props) { super(props); this.state = { hasError: false }; }
             static getDerivedStateFromError(error) { return { hasError: true }; }
             render() {
                 if (this.state.hasError) {
                     removeLoading();
-                    return <div className="h-screen flex flex-col items-center justify-center p-6 bg-red-900 text-white text-center font-mono"><h1>GAME CRASHED</h1><button onClick={()=>window.location.reload()} className="mt-4 pixel-btn px-4 py-2">RESTART</button></div>;
+                    return <div className="h-screen flex flex-col items-center justify-center p-6 bg-red-900 text-white text-center font-mono"><h1>SYSTEM CRASHED</h1><button onClick={()=>window.location.reload()} className="mt-4 pixel-btn px-4 py-2">REBOOT</button></div>;
                 }
                 return this.props.children;
             }
         }
 
+        // --- Socket Hook ---
         const useSocket = (roomId, onEvent) => {
             const socketRef = useRef(null);
             const [status, setStatus] = useState('connecting');
@@ -151,7 +120,67 @@
             return { status, emit };
         };
 
-        // --- 1. 迎賓大廳 ---
+        // --- 視覺組件 (獨立出來以確保動畫流暢) ---
+        const PixelVisuals = ({ gameMode, rolling, winner, allPlayers }) => {
+            return (
+                <div className="text-center w-full h-full flex flex-col items-center justify-center">
+                    {/* 1. 拉霸機 */}
+                    {gameMode === 'slot' && (
+                        <div className="flex justify-center gap-4">
+                            {[0,1,2].map(i => (
+                                <div key={i} className={`pixel-box p-4 w-32 h-48 flex items-center justify-center bg-gray-200 ${rolling ? 'animate-pulse' : ''}`}>
+                                    {rolling ? 
+                                        <div className="text-4xl">❓</div> : 
+                                        <div className="text-center animate__animated animate__flash">
+                                            <div className="text-4xl mb-2">{winner?.avatar || '💎'}</div>
+                                            <div className="text-xs truncate max-w-[80px]">{winner ? (i===1 ? winner.name : winner.avatar) : '7'}</div>
+                                        </div>
+                                    }
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* 2. 賽馬 (CSS 動畫) */}
+                    {gameMode === 'race' && (
+                        <div className="w-full max-w-4xl bg-green-800 border-4 border-white p-4 relative overflow-hidden">
+                            <div className="absolute right-10 top-0 bottom-0 w-2 bg-white z-0"></div>
+                            {Array.from({length: 4}).map((_, i) => (
+                                <div key={i} className="h-16 border-b-2 border-dashed border-white/30 relative flex items-center">
+                                    <div className={`absolute text-4xl transition-all ease-linear ${rolling ? 'left-[90%]' : 'left-2'}`} 
+                                         style={{ 
+                                             left: rolling ? (winner && i===1 ? '90%' : `${20 + Math.random()*60}%`) : (winner && i===1 ? '90%' : '10%'),
+                                             transitionDuration: rolling ? '8s' : '0.5s'
+                                         }}>
+                                        {winner && i===1 && !rolling ? winner.avatar : '🐎'}
+                                    </div>
+                                    {winner && i===1 && !rolling && <div className="absolute right-0 text-white font-bold bg-black px-2">{winner.name}</div>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* 3. 通用顯示 (流星/卡片等簡化為大頭像) */}
+                    {(gameMode === 'meteor' || gameMode === 'card') && (
+                        <div className="text-center">
+                            {rolling ? (
+                                <div className="text-yellow-400 text-2xl blink">SCANNING...</div>
+                            ) : (
+                                <div className="animate__animated animate__zoomIn">
+                                    <div className="pixel-box p-8 inline-block bg-yellow-400 text-black">
+                                        <div className="text-9xl mb-4">{winner?.avatar}</div>
+                                        <div className="text-4xl font-black">{winner?.name}</div>
+                                    </div>
+                                    <div className="mt-8 text-yellow-300 text-xl blink">WINNER!</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- 1. Index Page ---
         const IndexPage = ({ onStartHost, initialPlayers }) => {
             const [qrUrl, setQrUrl] = useState('');
             const [roomId, setRoomId] = useState('');
@@ -171,7 +200,6 @@
                 if(typeof QRCode !== 'undefined') QRCode.toDataURL(url, { width: 300, margin: 2, color: { dark: '#000000', light: '#ffffff' } }, (e, u) => !e && setQrUrl(u));
             }, []);
 
-            // 像素泡泡：使用 CSS transform 替代 left/top
             const PlayerBubble = ({ p }) => {
                 const style = useMemo(() => ({
                     left: `${Math.random() * 90}%`,
@@ -179,7 +207,7 @@
                     animationDelay: `${Math.random() * -10}s`
                 }), []);
                 return (
-                    <div className="absolute animate-[floatUp_linear_infinite] flex flex-col items-center" style={{...style, bottom: '-100px'}}>
+                    <div className="absolute animate-[floatUp_linear_infinite] flex flex-col items-center bubble-pixel" style={{...style, bottom: '-100px'}}>
                         <div className="bg-white border-4 border-black p-2 shadow-lg">{p.avatar}</div>
                         <div className="bg-black text-white text-xs px-2 py-1 mt-1 font-bold truncate max-w-[100px]">{p.name}</div>
                     </div>
@@ -191,34 +219,18 @@
                     <div className="absolute top-4 left-4 z-20 flex gap-4 text-xs">
                         <div className="pixel-box px-2 py-1 bg-green-400">ROOM: {roomId}</div>
                     </div>
-                    
-                    {/* 漂浮玩家 */}
                     <div className="absolute inset-0 pointer-events-none">{players.map((p,i)=><PlayerBubble key={i} p={p}/>)}</div>
-
                     <div className="relative z-10 flex flex-col items-center justify-center h-screen p-4">
                         <div className="text-center mb-10">
                             <div className="text-yellow-400 text-sm mb-4 blink">★ PRESS START TO JOIN ★</div>
-                            <h1 className="text-4xl md:text-6xl text-white drop-shadow-[4px_4px_0_#000] leading-tight mb-4 text-stroke">
-                                家防中心<br/>尾牙盛典
-                            </h1>
-                            <div className="inline-block bg-red-600 border-4 border-white text-white px-4 py-2 text-sm shadow-[4px_4px_0_#000]">
-                                掃描 QR CODE 加入
-                            </div>
+                            <h1 className="text-4xl md:text-6xl text-white drop-shadow-[4px_4px_0_#000] leading-tight mb-4">家防中心<br/>尾牙盛典</h1>
+                            <div className="inline-block bg-red-600 border-4 border-white text-white px-4 py-2 text-sm shadow-[4px_4px_0_#000]">掃描 QR CODE 加入</div>
                         </div>
-
                         <div className="pixel-box p-4 bg-white flex flex-col items-center gap-4 transform hover:scale-105 transition-transform">
                             {qrUrl ? <img src={qrUrl} className="w-48 h-48 image-pixelated" /> : <div className="w-48 h-48 flex items-center justify-center text-black">LOADING...</div>}
-                            <div className="text-center text-black">
-                                <div className="text-2xl mb-1">{players.length} P</div>
-                                <div className="text-xs">READY</div>
-                            </div>
+                            <div className="text-center text-black"><div className="text-2xl mb-1">{players.length} P</div><div className="text-xs">READY</div></div>
                         </div>
-
-                        <div className="absolute bottom-10 right-10">
-                            <button onClick={() => onStartHost(roomId, players)} className="pixel-btn pixel-btn-yellow px-6 py-4 text-sm animate-bounce">
-                                主持人入口 &gt;
-                            </button>
-                        </div>
+                        <div className="absolute bottom-10 right-10"><button onClick={() => onStartHost(roomId, players)} className="pixel-btn pixel-btn-yellow px-6 py-4 text-sm animate-bounce">主持人入口 &gt;</button></div>
                     </div>
                 </div>
             );
@@ -244,14 +256,8 @@
             if(isWinner) return (
                 <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center">
                     <div className="animate__animated animate__tada animate__infinite text-9xl mb-6">🏆</div>
-                    <div className="pixel-box-dark p-6 mb-4">
-                        <h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1>
-                        <p className="text-sm">恭喜中獎！</p>
-                    </div>
-                    <div className="pixel-box p-4 flex flex-col items-center">
-                        <div className="text-6xl mb-2">{user?.avatar}</div>
-                        <div className="text-xl font-bold">{user?.name}</div>
-                    </div>
+                    <div className="pixel-box-dark p-6 mb-4"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div>
+                    <div className="pixel-box p-4 flex flex-col items-center"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">{user?.name}</div></div>
                 </div>
             );
 
@@ -259,9 +265,7 @@
                 <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
                     <div className="pixel-box p-6 w-full max-w-sm text-center">
                         <h1 className="text-xl mb-6 text-blue-600">PLAYER JOIN</h1>
-                        <div className="grid grid-cols-4 gap-2 mb-6">
-                            {AVATARS.slice(0, 8).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-2xl p-2 border-2 ${myAvatar === a ? 'border-blue-500 bg-blue-100' : 'border-transparent'}`}>{a}</button>)}
-                        </div>
+                        <div className="grid grid-cols-4 gap-2 mb-6">{AVATARS.slice(0, 8).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-2xl p-2 border-2 ${myAvatar === a ? 'border-blue-500 bg-blue-100' : 'border-transparent'}`}>{a}</button>)}</div>
                         <input type="text" className="w-full border-4 border-black p-3 font-mono text-center mb-6 text-black" placeholder="YOUR NAME" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={8} />
                         <button onClick={handleJoin} className="pixel-btn w-full py-4 text-lg">START</button>
                     </div>
@@ -272,10 +276,7 @@
                 <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4">
                     <div className="absolute top-2 right-2 text-[10px] text-green-400">{status}</div>
                     {gameStatus.status === 'playing' ? (
-                        <div className="text-center animate-pulse">
-                            <div className="text-6xl mb-4">🎲</div>
-                            <div className="text-yellow-400 text-xl">ROLLING...</div>
-                        </div>
+                        <div className="text-center animate-pulse"><div className="text-6xl mb-4">🎲</div><div className="text-yellow-400 text-xl">ROLLING...</div></div>
                     ) : (
                         <div className="text-center w-full max-w-sm">
                             <div className="pixel-box-dark p-8 mb-6">
@@ -297,12 +298,11 @@
             const [gameMode, setGameMode] = useState('slot'); 
             const [targetCount, setTargetCount] = useState(1);
             
-            // 遊戲狀態
+            // 遊戲狀態 (用於動畫)
             const [displayState, setDisplayState] = useState({ 
-                text: "READY", 
-                subText: "WAITING...", 
                 winner: null,
-                rolling: false
+                rolling: false,
+                text: "READY"
             });
 
             const { emit } = useSocket(room, (evt, data) => {
@@ -311,33 +311,24 @@
                 if(evt === 'game_reset') { setAllPlayers([]); setIsDrawing(false); }
             });
 
-            // 遊戲模式列表 (Pixel 版)
             const MODES = [
-                { id: 'slot', name: '拉霸機' },
-                { id: 'race', name: '賽馬' },
-                { id: 'meteor', name: '流星' },
-                { id: 'card', name: '翻牌' }
+                { id: 'slot', name: '拉霸機' }, { id: 'race', name: '賽馬' }, { id: 'meteor', name: '流星' }, { id: 'card', name: '翻牌' }
             ];
 
-            // 抽獎邏輯
             const startDraw = async () => {
-                const available = allPlayers.filter(p => !p.hasWon); // 需在後端或前端標記已中獎，這裡簡化
-                // 這裡簡單隨機取樣，不修改原始陣列以免複雜化，實際應記錄 winners
                 if (allPlayers.length === 0) return alert("NO PLAYERS");
                 
                 setIsDrawing(true);
                 emit('update_game_status', { status: { status: 'playing' } });
 
-                // 隨機切換模式
                 const nextMode = MODES[Math.floor(Math.random() * MODES.length)].id;
                 setGameMode(nextMode);
 
-                // 模擬抽獎過程
                 const duration = nextMode === 'race' ? 8000 : 5000;
                 
-                setDisplayState(prev => ({ ...prev, rolling: true, winner: null }));
+                // 開始滾動
+                setDisplayState({ rolling: true, winner: null, text: "ROLLING" });
 
-                // 延遲出結果
                 setTimeout(() => {
                     const winner = allPlayers[Math.floor(Math.random() * allPlayers.length)];
                     setDisplayState({ rolling: false, winner: winner, text: winner.name });
@@ -351,88 +342,19 @@
                 }, duration);
             };
 
-            const resetGame = () => {
-                if(confirm("RESET SYSTEM?")) emit('reset_game', {});
-            };
-
-            // --- 視覺呈現 (Visuals) ---
-            const Visuals = () => {
-                const { rolling, winner } = displayState;
-                
-                // 1. 拉霸機
-                if (gameMode === 'slot') {
-                    return (
-                        <div className="flex justify-center gap-4">
-                            {[0,1,2].map(i => (
-                                <div key={i} className="pixel-box p-4 w-32 h-48 flex items-center justify-center bg-gray-200">
-                                    {rolling ? 
-                                        <div className="text-4xl animate-bounce">❓</div> : 
-                                        <div className="text-center animate__animated animate__flash">
-                                            <div className="text-4xl mb-2">{winner?.avatar || '💎'}</div>
-                                            <div className="text-xs truncate max-w-[80px]">{winner ? (i===1 ? winner.name : winner.avatar) : '7'}</div>
-                                        </div>
-                                    }
-                                </div>
-                            ))}
-                        </div>
-                    );
-                }
-
-                // 2. 賽馬
-                if (gameMode === 'race') {
-                    return (
-                        <div className="w-full max-w-4xl bg-green-800 border-4 border-white p-4 relative overflow-hidden">
-                            {/* 跑道線 */}
-                            <div className="absolute right-10 top-0 bottom-0 w-2 bg-white z-0"></div>
-                            {Array.from({length: 4}).map((_, i) => (
-                                <div key={i} className="h-16 border-b-2 border-dashed border-white/30 relative flex items-center">
-                                    <div className={`absolute text-4xl transition-all duration-[8000ms] ease-linear ${rolling ? 'left-[90%]' : 'left-2'}`} 
-                                         style={{ 
-                                             left: rolling ? (winner && i===1 ? '90%' : `${20 + Math.random()*60}%`) : (winner && i===1 ? '90%' : '10%'),
-                                             transitionProperty: 'left',
-                                             transitionDuration: rolling ? '8s' : '0.5s'
-                                         }}>
-                                        {winner && i===1 && !rolling ? winner.avatar : '🐎'}
-                                    </div>
-                                    {winner && i===1 && !rolling && <div className="absolute right-0 text-white font-bold bg-black px-2">{winner.name}</div>}
-                                </div>
-                            ))}
-                        </div>
-                    );
-                }
-
-                // 3. 流星/卡片 (簡化為大頭像顯示)
-                return (
-                    <div className="text-center">
-                        {rolling ? (
-                            <div className="text-yellow-400 text-2xl blink">SCANNING...</div>
-                        ) : (
-                            <div className="animate__animated animate__zoomIn">
-                                <div className="pixel-box p-8 inline-block bg-yellow-400 text-black">
-                                    <div className="text-9xl mb-4">{winner?.avatar}</div>
-                                    <div className="text-4xl font-black">{winner?.name}</div>
-                                </div>
-                                <div className="mt-8 text-yellow-300 text-xl blink">WINNER!</div>
-                            </div>
-                        )}
-                    </div>
-                );
-            };
+            const resetGame = () => { if(confirm("RESET SYSTEM?")) emit('reset_game', {}); };
 
             return (
-                <div className="h-screen bg-gray-900 flex flex-col relative overflow-hidden">
-                    {/* Header */}
+                <div className="h-screen bg-gray-900 flex flex-col relative overflow-hidden bg-grid">
                     <div className="absolute top-0 left-0 w-full p-4 flex justify-between z-20">
                         <div className="pixel-box px-4 py-2 bg-blue-600 text-white text-xs">P: {allPlayers.length}</div>
                         <div className="pixel-box px-4 py-2 bg-red-600 text-white text-xs">MODE: {gameMode.toUpperCase()}</div>
                     </div>
 
-                    {/* Main Stage */}
-                    <div className="flex-1 flex items-center justify-center p-8 bg-grid">
-                        <Visuals />
+                    <div className="flex-1 flex items-center justify-center p-8">
+                        <PixelVisuals gameMode={gameMode} rolling={displayState.rolling} winner={displayState.winner} allPlayers={allPlayers} />
                     </div>
 
-                    {/* Controls */}
                     <div className="h-24 bg-gray-800 border-t-4 border-black flex items-center justify-center gap-6 p-4 z-30">
                         {!isDrawing && (
                             <div className="flex items-center gap-4 bg-black p-2 border-2 border-white">
@@ -442,13 +364,7 @@
                                 <button className="text-yellow-400 font-bold" onClick={()=>setTargetCount(Math.min(10,targetCount+1))}>+</button>
                             </div>
                         )}
-                        <button 
-                            onClick={startDraw} 
-                            disabled={isDrawing || allPlayers.length === 0} 
-                            className={`pixel-btn ${isDrawing ? 'bg-gray-600' : 'pixel-btn-red'} px-8 py-3 text-xl font-bold`}
-                        >
-                            {isDrawing ? 'ROLLING...' : 'START'}
-                        </button>
+                        <button onClick={startDraw} disabled={isDrawing || allPlayers.length === 0} className={`pixel-btn ${isDrawing ? 'bg-gray-600' : 'pixel-btn-red'} px-8 py-3 text-xl font-bold`}>{isDrawing ? 'ROLLING...' : 'START'}</button>
                         {!isDrawing && <button onClick={resetGame} className="pixel-btn bg-gray-600 text-xs px-4 py-3">RESET</button>}
                     </div>
                 </div>
