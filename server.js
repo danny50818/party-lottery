@@ -17,64 +17,69 @@ const indexPath = path.join(rootPath, 'index.html');
 console.log("=== 伺服器啟動 ===");
 console.log("工作目錄:", rootPath);
 
+// 檢查 index.html 是否存在
 if (fs.existsSync(indexPath)) {
     console.log("✅ 成功找到 index.html");
 } else {
     console.error("❌ 找不到 index.html！請確認檔案已上傳至 GitHub 根目錄。");
 }
 
+// 設定靜態檔案服務
 app.use(express.static(rootPath));
 
 // 記憶體資料庫
 const rooms = {};
 
 io.on('connection', (socket) => {
-    // 記錄連線 IP (供除錯用)
-    const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
-    console.log(`Client connected: ${socket.id} from ${clientIp}`);
+    console.log('Client connected:', socket.id);
 
     // --- 加入房間 ---
     socket.on('join_room', (roomId) => {
         socket.join(roomId);
+        
+        // 初始化房間
         if (!rooms[roomId]) {
             rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
         }
+
+        // 發送目前的玩家名單給剛連線的人
         socket.emit('init_data', rooms[roomId]);
+        // 同步目前的遊戲狀態
         socket.emit('game_status_update', rooms[roomId].gameState);
     });
 
-    // --- 玩家加入 ---
+    // --- 玩家加入 (來自手機) ---
     socket.on('player_join', ({ roomId, user }) => {
         if (!rooms[roomId]) return; 
+
+        // 避免重複加入
         const existingPlayer = rooms[roomId].players.find(p => p.id === user.id);
         if (!existingPlayer) {
             rooms[roomId].players.push(user);
         } else {
             Object.assign(existingPlayer, user);
         }
+
+        // 廣播給房間內所有人
         io.to(roomId).emit('player_list_update', rooms[roomId].players);
     });
 
-    // --- 遊戲狀態更新 ---
+    // --- 遊戲狀態更新 (來自大螢幕) ---
     socket.on('update_game_status', ({ roomId, status }) => {
         if (!rooms[roomId]) return;
+        
         rooms[roomId].gameState = status;
         io.to(roomId).emit('game_status_update', status);
     });
 
-    // --- [關鍵新增] 重置活動 ---
+    // --- 重置遊戲 ---
     socket.on('reset_game', ({ roomId }) => {
         if (!rooms[roomId]) return;
         
-        console.log(`Room ${roomId} has been RESET by host.`);
-        
-        // 1. 清空伺服器端的玩家名單與狀態
+        console.log(`Room ${roomId} has been reset.`);
         rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
         
-        // 2. 廣播重置訊號 (game_reset) -> 手機端收到後會自動登出
         io.to(roomId).emit('game_reset');
-        
-        // 3. 更新大螢幕顯示 (空名單)
         io.to(roomId).emit('init_data', rooms[roomId]);
     });
 
@@ -83,6 +88,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// --- SPA 路由處理 ---
 app.get('*', (req, res) => {
     if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
@@ -92,6 +98,7 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
+// 修正：強制監聽 0.0.0.0 以符合 Render 要求
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
