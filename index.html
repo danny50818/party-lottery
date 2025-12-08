@@ -14,9 +14,9 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Tools -->
+    <!-- Tools: 使用更穩定的 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 
     <style>
@@ -51,72 +51,91 @@
         const { useState, useEffect, useRef, useMemo } = React;
         const { createRoot } = ReactDOM;
         
-        // 使用更穩定的 MQTT 設定
+        // MQTT 設定
         const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
-        const MQTT_OPTIONS = {
-            keepalive: 30,
-            clientId: 'client_' + Math.random().toString(16).substr(2, 8),
-            protocolId: 'MQTT',
-            protocolVersion: 4,
-            clean: true,
-            reconnectPeriod: 1000,
-            connectTimeout: 30 * 1000,
-        };
-
+        const MQTT_OPTS = { clean: true, connectTimeout: 4000, reconnectPeriod: 1000 };
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
+
+        // =================================================================
+        //  共用 MQTT Hook (確保連線穩定)
+        // =================================================================
+        const useMqtt = (roomId, onMessage) => {
+            const clientRef = useRef(null);
+            const [status, setStatus] = useState('connecting');
+            const [lastMsg, setLastMsg] = useState(null);
+
+            useEffect(() => {
+                if(!roomId) return;
+                console.log(`Connecting MQTT to room: ${roomId}`);
+                
+                const client = mqtt.connect(MQTT_BROKER, { ...MQTT_OPTS, clientId: `client_${Math.random().toString(16).slice(2)}` });
+                clientRef.current = client;
+
+                client.on('connect', () => {
+                    console.log('MQTT Connected');
+                    setStatus('connected');
+                    client.subscribe(`tw_lottery/${roomId}/#`, (err) => {
+                        if (!err) console.log('Subscribed to topic');
+                    });
+                });
+
+                client.on('message', (topic, message) => {
+                    const msg = message.toString();
+                    console.log('Msg received:', topic, msg);
+                    setLastMsg({ topic, msg, time: new Date().toLocaleTimeString() });
+                    if (onMessage) onMessage(topic, msg);
+                });
+
+                client.on('error', (err) => { console.error('MQTT Error:', err); setStatus('error'); });
+                client.on('offline', () => setStatus('offline'));
+                client.on('reconnect', () => setStatus('reconnecting'));
+
+                return () => { console.log('MQTT Disconnecting'); client.end(); };
+            }, [roomId]);
+
+            const publish = (subTopic, data) => {
+                if (clientRef.current && clientRef.current.connected) {
+                    clientRef.current.publish(`tw_lottery/${roomId}/${subTopic}`, JSON.stringify(data));
+                }
+            };
+
+            return { status, lastMsg, publish };
+        };
 
         // =================================================================
         //  1. 迎賓大廳 (Index Page)
         // =================================================================
-        const IndexPage = () => {
+        const IndexPage = ({ onStartHost, initialPlayers }) => {
             const [qrUrl, setQrUrl] = useState('');
             const [roomId, setRoomId] = useState('');
-            const [players, setPlayers] = useState([]);
-            const [connected, setConnected] = useState(false);
-            const [isLocalhost, setIsLocalhost] = useState(false);
-            const [lastMsgTime, setLastMsgTime] = useState(null);
-            const clientRef = useRef(null);
-
-            useEffect(() => {
-                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                    setIsLocalhost(true);
-                }
-
-                const params = new URLSearchParams(window.location.search);
-                let rid = params.get('room');
-                if(!rid) rid = Math.floor(1000 + Math.random() * 9000).toString();
-                setRoomId(rid);
-
-                const baseUrl = window.location.href.split('?')[0]; 
-                const playerLink = `${baseUrl}?mode=player&room=${rid}`;
-                QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (err, url) => {
-                    if(!err) setQrUrl(url);
-                });
-
-                const client = mqtt.connect(MQTT_BROKER, MQTT_OPTIONS);
-                clientRef.current = client;
-                
-                client.on('connect', () => {
-                    console.log(`Index Connected: ${rid}`);
-                    setConnected(true);
-                    client.subscribe(`tw_lottery/${rid}/join`, { qos: 0 });
-                });
-                
-                client.on('reconnect', () => console.log('Reconnecting...'));
-                client.on('offline', () => setConnected(false));
-
-                client.on('message', (topic, message) => {
+            const [players, setPlayers] = useState(initialPlayers || []);
+            
+            // 使用 MQTT Hook
+            const { status, publish } = useMqtt(roomId, (topic, msg) => {
+                if (topic.endsWith('/join')) {
                     try {
-                        setLastMsgTime(Date.now()); // 訊號燈閃爍
-                        const newPlayer = JSON.parse(message.toString());
+                        const newPlayer = JSON.parse(msg);
                         setPlayers(prev => {
                             if (prev.some(p => p.id === newPlayer.id)) return prev;
                             return [...prev, newPlayer];
                         });
                     } catch (e) {}
-                });
+                }
+            });
 
-                return () => client.end();
+            useEffect(() => {
+                // 1. 取得或產生 Room ID
+                const params = new URLSearchParams(window.location.search);
+                let rid = params.get('room');
+                if(!rid) rid = Math.floor(1000 + Math.random() * 9000).toString();
+                setRoomId(rid);
+
+                // 2. 生成 Player 連結 (確保使用當前 host)
+                const baseUrl = window.location.href.split('?')[0]; 
+                const playerLink = `${baseUrl}?mode=player&room=${rid}`;
+                QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (err, url) => {
+                    if(!err) setQrUrl(url);
+                });
             }, []);
 
             const PlayerBubble = ({ player }) => {
@@ -135,20 +154,13 @@
                 );
             };
 
-            const startHost = () => {
-                sessionStorage.setItem(`lottery_players_${roomId}`, JSON.stringify(players));
-                window.location.search = `?mode=host&room=${roomId}`;
-            };
-
             return (
                 <div className="min-h-screen relative overflow-hidden font-sans" style={{background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)'}}>
                     <div className="absolute top-4 left-4 z-20 flex gap-2 items-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${connected ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
-                            {connected ? '● 連線正常' : '● 連線中...'}
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'connected' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
+                            {status === 'connected' ? '● 連線正常' : '● 連線中...'}
                         </span>
                         <span className="text-white/50 text-xs">Room: {roomId}</span>
-                        {/* 訊號燈: 收到資料時閃爍 */}
-                        <div className={`w-3 h-3 rounded-full transition-colors duration-200 ${Date.now() - lastMsgTime < 500 ? 'bg-yellow-400' : 'bg-gray-600'}`}></div>
                     </div>
 
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">{players.map(p => <PlayerBubble key={p.id} player={p} />)}</div>
@@ -158,13 +170,6 @@
                             <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 drop-shadow-2xl tracking-tight mb-4">家防中心尾牙</h1>
                             <p className="text-red-100/90 text-xl font-light tracking-wider bg-black/20 inline-block px-4 py-1 rounded-lg backdrop-blur-sm">掃描 QR Code 立即簽到</p>
                         </div>
-
-                        {isLocalhost && (
-                            <div className="bg-red-600 text-white px-6 py-3 rounded-xl mb-6 shadow-lg animate-pulse font-bold border-2 border-yellow-400">
-                                ⚠️ 警告：目前為 Localhost 模式，手機無法連線。<br/>
-                                請使用電腦 IP (如 192.168.x.x) 開啟網頁。
-                            </div>
-                        )}
 
                         <div className="glass-panel p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full mx-auto transform hover:scale-105 transition-transform duration-500">
                             <div className="bg-white p-4 rounded-3xl shadow-inner">
@@ -176,7 +181,7 @@
                             </div>
                         </div>
                         <div className="absolute bottom-8 right-8">
-                            <button onClick={startHost} className="group flex items-center gap-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-red-900 px-8 py-4 rounded-full font-black text-xl shadow-lg transition-all hover:scale-105">
+                            <button onClick={() => onStartHost(roomId, players)} className="group flex items-center gap-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-red-900 px-8 py-4 rounded-full font-black text-xl shadow-lg transition-all hover:scale-105">
                                 <span>進入大螢幕抽獎</span><span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
                             </button>
                         </div>
@@ -194,82 +199,40 @@
             const [myAvatar, setMyAvatar] = useState(AVATARS[0]);
             const [joined, setJoined] = useState(false);
             const [gameStatus, setGameStatus] = useState({ status: 'lobby' }); 
-            const [connected, setConnected] = useState(false);
-            const clientRef = useRef(null);
+            
+            const { status, publish } = useMqtt(room, (topic, msg) => {
+                if (topic.endsWith('/status')) {
+                    setGameStatus(JSON.parse(msg));
+                }
+            });
 
+            // 心跳機制：每 3 秒告訴大螢幕我還在 (確保切換頁面時資料有傳到)
             useEffect(() => {
-                const savedUser = localStorage.getItem(`lottery_user_${room}`);
-                if (savedUser) {
-                    const u = JSON.parse(savedUser);
-                    setUser(u);
-                    setJoined(true);
-                    connectMqtt(u, room);
-                }
-            }, [room]);
-
-            const connectMqtt = (u, rid) => {
-                const client = mqtt.connect(MQTT_BROKER, MQTT_OPTIONS);
-                clientRef.current = client;
-                client.on('connect', () => {
-                    setConnected(true);
-                    client.subscribe(`tw_lottery/${rid}/status`);
+                let interval;
+                if (joined && user && status === 'connected') {
                     // 初始發送
-                    publishJoin(client, rid, u);
-                    // 心跳：確保大螢幕能收到
-                    const heartbeat = setInterval(() => publishJoin(client, rid, u), 2000);
-                    client.heartbeat = heartbeat;
-                });
-                client.on('offline', () => setConnected(false));
-                client.on('message', (t, m) => setGameStatus(JSON.parse(m.toString())));
-            };
-
-            const publishJoin = (client, rid, u) => {
-                if(client && client.connected) {
-                    client.publish(`tw_lottery/${rid}/join`, JSON.stringify(u), { qos: 0, retain: false });
+                    publish('join', user);
+                    // 定時發送
+                    interval = setInterval(() => {
+                        publish('join', user);
+                    }, 3000);
                 }
-            };
+                return () => clearInterval(interval);
+            }, [joined, user, status]);
 
             const handleJoin = () => {
                 if (!nameInput.trim()) return;
                 const newUser = { id: Date.now() + Math.random().toString().slice(2), name: nameInput.trim(), avatar: myAvatar };
                 setUser(newUser);
                 setJoined(true);
-                localStorage.setItem(`lottery_user_${room}`, JSON.stringify(newUser));
-                connectMqtt(newUser, room);
             };
 
-            const handleResend = () => {
-                if (clientRef.current && user) {
-                    publishJoin(clientRef.current, room, user);
-                    alert("已重送加入請求！");
-                } else {
-                    alert("尚未連線，請稍候...");
-                }
-            };
-
-            const logout = () => {
-                if(confirm("確定要登出嗎？")) {
-                    localStorage.removeItem(`lottery_user_${room}`);
-                    setJoined(false);
-                    setNameInput("");
-                    if (clientRef.current && clientRef.current.heartbeat) clearInterval(clientRef.current.heartbeat);
-                    if(clientRef.current) clientRef.current.end();
-                }
+            const handleTest = () => {
+                publish('join', user);
+                alert("已發送訊號！請看大螢幕人數是否有跳動");
             };
 
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
-
-            useEffect(() => {
-                if (isWinner) {
-                    const end = Date.now() + 5000;
-                    const frame = () => {
-                        confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#FFD700'] });
-                        confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#FFD700'] });
-                        if (Date.now() < end && isWinner) requestAnimationFrame(frame);
-                    };
-                    frame();
-                }
-            }, [isWinner]);
 
             if (isWinner) return (
                 <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 to-black">
@@ -289,7 +252,7 @@
 
             if (!joined) return (
                 <div className="min-h-screen bg-gradient-to-br from-red-900 to-black p-6 flex flex-col justify-center">
-                    <div className="absolute top-4 right-4 text-white/50 text-xs">Room: {room}</div>
+                    <div className="absolute top-4 right-4 text-white/30 text-xs">Room: {room}</div>
                     <div className="w-full max-w-md mx-auto space-y-8 animate__animated animate__fadeIn">
                         <div className="text-center"><h1 className="text-4xl font-black text-yellow-400">JOIN PARTY</h1><p className="text-red-200">輸入暱稱，加入盛典</p></div>
                         <div className="glass-panel rounded-3xl p-6 space-y-6">
@@ -303,10 +266,7 @@
 
             return (
                 <div className="min-h-screen bg-gradient-to-b from-red-900 to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-                    <div className="absolute top-4 left-4 text-xs flex gap-2">
-                        <span className={connected ? 'text-green-400' : 'text-red-400'}>● {connected ? '連線正常' : '連線中...'}</span>
-                    </div>
-                    <div className="absolute top-4 right-4 text-white/30 text-xs">Room: {room}</div>
+                    <div className="absolute top-4 left-4 text-xs flex gap-2"><span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'connected' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>{status === 'connected' ? '● 連線正常' : '● 連線中...'}</span></div>
                     
                     {gameStatus.status === 'playing' ? (
                         <div className="space-y-8 animate__animated animate__pulse animate__infinite relative z-10">
@@ -319,11 +279,9 @@
                             <div className="relative group"><div className="w-40 h-40 mx-auto bg-red-800 rounded-full flex items-center justify-center text-7xl border-4 border-yellow-500 shadow-2xl">{user.avatar}</div></div>
                             <div><h2 className="text-5xl font-black mb-3">{user.name}</h2><div className="inline-flex items-center px-5 py-2 rounded-full bg-green-900/50 text-green-400 border border-green-500/30">● 已連線 Ready</div></div>
                             {gameStatus.winnerName && <div className="glass-panel p-6 rounded-2xl animate__animated animate__fadeInUp"><p className="text-yellow-500 text-xs mb-2">上回合得主</p><div className="text-3xl font-black">{gameStatus.winnerName}</div></div>}
-                            <div className="text-red-300/50">等待主持人開始...</div>
-                            <button onClick={handleResend} className="text-xs text-yellow-500 border border-yellow-500/30 px-3 py-1 rounded hover:bg-yellow-500/10">沒看到名字? 點此重送</button>
+                            <button onClick={handleTest} className="text-xs text-yellow-500 border border-yellow-500/30 px-3 py-1 rounded hover:bg-yellow-500/10">測試連線 (點此發送訊號)</button>
                         </div>
                     )}
-                    <button onClick={logout} className="absolute bottom-6 text-white/30 text-sm underline z-20">登出</button>
                 </div>
             );
         };
@@ -331,8 +289,8 @@
         // =================================================================
         //  3. 大螢幕端 (Host App)
         // =================================================================
-        const HostApp = ({ room }) => {
-            const [allPlayers, setAllPlayers] = useState([]);
+        const HostApp = ({ room, initialPlayers }) => {
+            const [allPlayers, setAllPlayers] = useState(initialPlayers || []);
             const [winners, setWinners] = useState([]); 
             const [currentRound, setCurrentRound] = useState(0); 
             const [isDrawing, setIsDrawing] = useState(false); 
@@ -344,12 +302,21 @@
             const [gameMode, setGameMode] = useState('cyber'); 
             const [showWinnerModal, setShowWinnerModal] = useState(false);
             const [modalWinner, setModalWinner] = useState(null);
-            const [connected, setConnected] = useState(false);
-            const [lastMsgTime, setLastMsgTime] = useState(null);
             
-            const clientRef = useRef(null);
+            // MQTT Hook
+            const { status, publish, lastMsg } = useMqtt(room, (topic, msg) => {
+                if (topic.endsWith('/join')) {
+                    try {
+                        const p = JSON.parse(msg);
+                        setAllPlayers(prev => {
+                            if (prev.some(x => x.id === p.id)) return prev;
+                            return [...prev, p];
+                        });
+                    } catch(e){}
+                }
+            });
 
-            // --- 視覺組件 ---
+            // 視覺組件
             const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
                 const [display, setDisplay] = useState("READY");
                 useEffect(() => {
@@ -368,36 +335,6 @@
                 { id: 'cyber', name: '矩陣滾動', theme: 'theme-cyber' }, { id: 'retro', name: '幸運轉盤', theme: 'theme-retro' }, { id: 'magic', name: '命運塔羅', theme: 'theme-magic' }, { id: 'space', name: '雷達鎖定', theme: 'theme-space' }, { id: 'vegas', name: '黃金拉霸', theme: 'theme-retro' }, { id: 'meteor', name: '流星降臨', theme: 'theme-space' }, { id: 'gasha', name: '歡樂扭蛋', theme: 'theme-festival' }, { id: 'battle', name: '生存淘汰', theme: 'theme-cyber' },
             ];
             const [unusedModes, setUnusedModes] = useState([...GAME_MODES.map(m => m.id)]);
-
-            useEffect(() => {
-                const storedPlayers = sessionStorage.getItem(`lottery_players_${room}`);
-                if (storedPlayers) setAllPlayers(JSON.parse(storedPlayers));
-
-                const client = mqtt.connect(MQTT_BROKER, MQTT_OPTIONS);
-                clientRef.current = client;
-                client.on('connect', () => {
-                    setConnected(true);
-                    console.log(`Host connected: ${room}`);
-                    client.subscribe(`tw_lottery/${room}/join`, { qos: 0 });
-                });
-                client.on('offline', () => setConnected(false));
-                
-                client.on('message', (t, m) => {
-                    if (t.endsWith('/join')) {
-                        setLastMsgTime(Date.now());
-                        try {
-                            const p = JSON.parse(m.toString());
-                            setAllPlayers(prev => {
-                                if (prev.some(x => x.id === p.id)) return prev;
-                                const list = [...prev, p];
-                                sessionStorage.setItem(`lottery_players_${room}`, JSON.stringify(list));
-                                return list;
-                            });
-                        } catch(e){}
-                    }
-                });
-                return () => client.end();
-            }, [room]);
 
             const availablePlayers = useMemo(() => {
                 const ids = new Set(winners.map(w => w.id));
@@ -426,7 +363,7 @@
                     pool.splice(idx,1);
                 }
                 setWinners(prev => [...prev, ...roundWinners]);
-                if(clientRef.current) clientRef.current.publish(`tw_lottery/${room}/status`, JSON.stringify({status:'playing', round: nextRound}), {qos:0, retain:false});
+                publish('status', {status:'playing', round: nextRound});
                 await processQueue(roundWinners);
             };
 
@@ -452,13 +389,19 @@
                     }
                     await new Promise(r => setTimeout(r, 3000));
                     setShowWinnerModal(false);
-                    if(clientRef.current) clientRef.current.publish(`tw_lottery/${room}/status`, JSON.stringify({status:'result', round: currentRound+1, winnerName: w.name, winnerId: w.id}), {qos:0, retain:true});
+                    publish('status', {status:'result', round: currentRound+1, winnerName: w.name, winnerId: w.id});
                     await new Promise(r => setTimeout(r, 500));
                 }
                 setIsDrawing(false);
             };
 
             const currentConfig = GAME_MODES.find(m => m.id === gameMode) || GAME_MODES[0];
+
+            // 手動新增玩家 (防呆用)
+            const manualAdd = () => {
+                const name = prompt("手動輸入玩家名稱：");
+                if (name) setAllPlayers(prev => [...prev, {id: 'manual_'+Date.now(), name, avatar:'👤'}]);
+            };
 
             return (
                 <div className={`h-screen flex flex-col relative overflow-hidden font-sans transition-colors duration-1000 ${currentConfig.theme}`}>
@@ -478,10 +421,14 @@
                             <span className="font-bold text-2xl mr-2">{currentRound === 0 ? "準備開始" : `第 ${currentRound} 回合`}</span>
                             {isDrawing && <span className="bg-red-600 text-white text-xs px-2 py-1 rounded animate-pulse">LIVE - {currentConfig.name}</span>}
                         </div>
-                        <div className="flex gap-2 items-center">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${connected ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>{connected ? 'Online' : 'Offline'}</span>
-                            <div className={`w-3 h-3 rounded-full transition-colors duration-200 ${Date.now() - lastMsgTime < 500 ? 'bg-yellow-400' : 'bg-gray-600'}`}></div>
-                            <div className="glass-panel px-6 py-3 rounded-full text-white/80 font-mono">Room: {room} | 人數: {allPlayers.length}</div>
+                        <div className="flex flex-col items-end gap-1">
+                            <div className="flex gap-2 items-center pointer-events-auto cursor-pointer" onClick={manualAdd}>
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'connected' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>{status === 'connected' ? 'Online' : 'Offline'}</span>
+                                <div className="glass-panel px-6 py-3 rounded-full text-white/80 font-mono">Room: {room} | 人數: {allPlayers.length}</div>
+                            </div>
+                            <div className="text-xs text-white/30 font-mono">
+                                Last Msg: {lastMsg ? `${lastMsg.time} (${lastMsg.msg.length}b)` : 'None'}
+                            </div>
                         </div>
                     </div>
 
@@ -517,7 +464,9 @@
         const App = () => {
             const [mode, setMode] = useState('index');
             const [room, setRoom] = useState('');
+            const [cachedPlayers, setCachedPlayers] = useState([]);
 
+            // 處理路由
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const modeParam = params.get('mode');
@@ -527,10 +476,19 @@
                 else setMode('index');
             }, []);
 
+            // 處理切換時的資料傳遞
+            const handleStartHost = (roomId, players) => {
+                setRoom(roomId);
+                setCachedPlayers(players); // 傳遞目前在 Index 收集到的玩家
+                setMode('host');
+                // 不使用 reload，直接切換組件以保持狀態
+                window.history.pushState({}, '', `?mode=host&room=${roomId}`);
+            };
+
             return (
                 <>
-                    {mode === 'index' && <IndexPage />}
-                    {mode === 'host' && <HostApp room={room} />}
+                    {mode === 'index' && <IndexPage onStartHost={handleStartHost} initialPlayers={cachedPlayers} />}
+                    {mode === 'host' && <HostApp room={room} initialPlayers={cachedPlayers} />}
                     {mode === 'player' && <PlayerApp room={room} />}
                 </>
             );
