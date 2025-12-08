@@ -10,46 +10,40 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// --- 伺服器啟動診斷 ---
+// --- 扁平化結構設定 ---
 const rootPath = __dirname;
-const publicPath = path.join(rootPath, 'public');
+const indexPath = path.join(rootPath, 'index.html');
 
-console.log("=== 系統啟動 ===");
-console.log("根目錄:", rootPath);
+console.log("=== 伺服器啟動 ===");
+console.log("工作目錄:", rootPath);
 
-// 自動尋找 index.html (優先找根目錄，其次找 public)
-let staticPath = null;
-let indexFile = null;
-
-if (fs.existsSync(path.join(rootPath, 'index.html'))) {
-    console.log("✅ 在根目錄找到 index.html");
-    staticPath = rootPath;
-    indexFile = path.join(rootPath, 'index.html');
-} else if (fs.existsSync(path.join(publicPath, 'index.html'))) {
-    console.log("✅ 在 public 資料夾找到 index.html");
-    staticPath = publicPath;
-    indexFile = path.join(publicPath, 'index.html');
+if (fs.existsSync(indexPath)) {
+    console.log("✅ 成功找到 index.html");
 } else {
-    console.error("❌ 找不到 index.html！");
+    console.error("❌ 找不到 index.html！請確認檔案已上傳至 GitHub 根目錄。");
 }
 
-// 設定靜態檔案 (如果有的話)
-if (staticPath) {
-    app.use(express.static(staticPath));
-}
+app.use(express.static(rootPath));
 
 // 記憶體資料庫
 const rooms = {};
 
 io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id);
+    // 記錄連線 IP (供除錯用)
+    const clientIp = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
+    console.log(`Client connected: ${socket.id} from ${clientIp}`);
 
+    // --- 加入房間 ---
     socket.on('join_room', (roomId) => {
         socket.join(roomId);
-        if (!rooms[roomId]) rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
+        if (!rooms[roomId]) {
+            rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
+        }
         socket.emit('init_data', rooms[roomId]);
+        socket.emit('game_status_update', rooms[roomId].gameState);
     });
 
+    // --- 玩家加入 ---
     socket.on('player_join', ({ roomId, user }) => {
         if (!rooms[roomId]) return; 
         const existingPlayer = rooms[roomId].players.find(p => p.id === user.id);
@@ -61,17 +55,26 @@ io.on('connection', (socket) => {
         io.to(roomId).emit('player_list_update', rooms[roomId].players);
     });
 
+    // --- 遊戲狀態更新 ---
     socket.on('update_game_status', ({ roomId, status }) => {
         if (!rooms[roomId]) return;
         rooms[roomId].gameState = status;
         io.to(roomId).emit('game_status_update', status);
     });
-    
+
+    // --- [關鍵新增] 重置活動 ---
     socket.on('reset_game', ({ roomId }) => {
         if (!rooms[roomId]) return;
-        console.log(`Room ${roomId} has been reset.`);
+        
+        console.log(`Room ${roomId} has been RESET by host.`);
+        
+        // 1. 清空伺服器端的玩家名單與狀態
         rooms[roomId] = { players: [], gameState: { status: 'lobby' } };
+        
+        // 2. 廣播重置訊號 (game_reset) -> 手機端收到後會自動登出
         io.to(roomId).emit('game_reset');
+        
+        // 3. 更新大螢幕顯示 (空名單)
         io.to(roomId).emit('init_data', rooms[roomId]);
     });
 
@@ -80,32 +83,11 @@ io.on('connection', (socket) => {
     });
 });
 
-// --- 萬用路由 (包含除錯頁面) ---
 app.get('*', (req, res) => {
-    if (indexFile && fs.existsSync(indexFile)) {
-        // 正常情況：回傳網頁
-        res.sendFile(indexFile);
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
     } else {
-        // 異常情況：顯示診斷報告 (取代空白畫面)
-        const filesInRoot = fs.readdirSync(rootPath).join('<br>');
-        const filesInPublic = fs.existsSync(publicPath) ? fs.readdirSync(publicPath).join('<br>') : 'No public folder';
-        
-        res.status(404).send(`
-            <div style="font-family: sans-serif; padding: 20px; line-height: 1.5;">
-                <h1 style="color: red;">⚠️ 網站啟動失敗 (File Not Found)</h1>
-                <p>伺服器已啟動，但找不到 <strong>index.html</strong> 檔案。</p>
-                <hr>
-                <h3>伺服器檔案列表 (Debug Info):</h3>
-                <p><strong>Root (/):</strong><br> ${filesInRoot}</p>
-                <p><strong>Public (/public):</strong><br> ${filesInPublic}</p>
-                <hr>
-                <p><strong>請檢查：</strong></p>
-                <ul>
-                    <li>檔案是否已 Push 到 GitHub？</li>
-                    <li>檔名是否大小寫正確？ (必須是 <code>index.html</code>，不能是 <code>Index.html</code>)</li>
-                </ul>
-            </div>
-        `);
+        res.status(404).send("Error: index.html not found.");
     }
 });
 
