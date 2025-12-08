@@ -53,10 +53,37 @@
 
     <script type="text/babel">
         // 修正：使用全域變數，移除 import 語法
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
+
+        // --- 錯誤邊界元件 (防止白屏) ---
+        class ErrorBoundary extends Component {
+            constructor(props) {
+                super(props);
+                this.state = { hasError: false, error: null };
+            }
+            static getDerivedStateFromError(error) {
+                return { hasError: true, error };
+            }
+            render() {
+                if (this.state.hasError) {
+                    return (
+                        <div className="h-screen flex flex-col items-center justify-center p-6 bg-red-900 text-white text-center">
+                            <h1 className="text-3xl font-bold mb-4"⚠️ 發生錯誤</h1>
+                            <div className="bg-black/50 p-4 rounded text-left font-mono text-xs overflow-auto max-w-full mb-4">
+                                {this.state.error.toString()}
+                            </div>
+                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-white text-red-900 px-6 py-3 rounded-full font-bold">
+                                清除快取並重整
+                            </button>
+                        </div>
+                    );
+                }
+                return this.props.children;
+            }
+        }
 
         // =================================================================
         //  Socket Hook (連線核心)
@@ -68,8 +95,15 @@
             useEffect(() => {
                 if(!roomId) return;
                 
+                // 檢查 io 是否存在 (防呆)
+                if (typeof io === 'undefined') {
+                    console.error("Socket.io library not loaded!");
+                    setStatus('error-lib-missing');
+                    return;
+                }
+
                 // 自動連線到當前伺服器 (Render)
-                // io 是全域變數 (來自 /socket.io/socket.io.js)
+                // io 是全域變數 (來自 socket.io.min.js CDN)
                 const socket = io(); 
                 socketRef.current = socket;
 
@@ -80,19 +114,22 @@
                 });
 
                 socket.on('disconnect', () => setStatus('disconnected'));
-                socket.on('connect_error', () => setStatus('error'));
+                socket.on('connect_error', (err) => {
+                    console.error("Conn Error:", err);
+                    setStatus('error');
+                });
 
                 // 統一事件處理
                 socket.on('player_list_update', (data) => onEvent && onEvent('player_list_update', data));
                 socket.on('game_status_update', (data) => onEvent && onEvent('game_status_update', data));
                 socket.on('init_data', (data) => onEvent && onEvent('init_data', data));
+                socket.on('game_reset', (data) => onEvent && onEvent('game_reset', data)); // 新增重置監聽
 
                 return () => socket.disconnect();
             }, [roomId]);
 
             const emit = (event, data) => {
                 if (socketRef.current) {
-                    // 包裝成伺服器需要的格式 { roomId, ...data }
                     socketRef.current.emit(event, { roomId, ...data });
                 }
             };
@@ -112,6 +149,10 @@
             const { status } = useSocket(roomId, (event, data) => {
                 if (event === 'player_list_update' || (event === 'init_data' && data.players)) {
                     setPlayers(data.players || (data.length ? data : []));
+                }
+                // 如果在大廳收到重置訊號，清空名單
+                if (event === 'game_reset' || (event === 'init_data' && !data.players?.length)) {
+                    setPlayers([]);
                 }
             });
 
@@ -206,6 +247,14 @@
                 if (event === 'game_status_update') {
                     setGameStatus(data);
                 }
+                // 收到重置指令，強制登出並清空
+                if (event === 'game_reset') {
+                    localStorage.removeItem('lottery_user');
+                    setUser(null);
+                    setJoined(false);
+                    setGameStatus({ status: 'lobby' });
+                    alert("主持人已重置活動，請重新登入！");
+                }
             });
 
             // 重新連線後自動補送加入訊號 (確保伺服器有資料)
@@ -224,13 +273,22 @@
                 emit('player_join', { user: newUser });
             };
 
-            // 自動登入檢查
+            // 自動登入檢查 (含安全防護)
             useEffect(() => {
-                const saved = localStorage.getItem('lottery_user');
-                if (saved) {
-                    const u = JSON.parse(saved);
-                    setUser(u);
-                    setJoined(true);
+                try {
+                    const saved = localStorage.getItem('lottery_user');
+                    if (saved) {
+                        const u = JSON.parse(saved);
+                        if (u && u.name && u.avatar) {
+                            setUser(u);
+                            setJoined(true);
+                        } else {
+                            localStorage.removeItem('lottery_user');
+                        }
+                    }
+                } catch(e) {
+                    console.error("Local storage error:", e);
+                    localStorage.removeItem('lottery_user');
                 }
             }, []);
 
@@ -318,6 +376,14 @@
                 } else if (event === 'init_data') {
                     if (data.players) setAllPlayers(data.players);
                 }
+                // 處理重置回饋 (若伺服器確認重置)
+                if (event === 'game_reset') {
+                    setAllPlayers([]);
+                    setWinners([]);
+                    setCurrentRound(0);
+                    setIsDrawing(false);
+                    setDrawQueue([]);
+                }
             });
 
             // 視覺組件 (簡化)
@@ -344,6 +410,18 @@
                 const ids = new Set(winners.map(w => w.id));
                 return allPlayers.filter(p => !ids.has(p.id));
             }, [allPlayers, winners]);
+
+            // 重置功能
+            const resetGame = () => {
+                if(confirm("確定要重置所有活動紀錄嗎？\n這將清空所有玩家、中獎名單，並重置遊戲狀態。\n(請確認所有人都需要重新掃碼加入)")) {
+                    emit('reset_game', {}); // 發送重置指令給伺服器
+                    // 本地先行清除 (優化體驗)
+                    setAllPlayers([]);
+                    setWinners([]);
+                    setCurrentRound(0);
+                    setIsDrawing(false);
+                }
+            };
 
             const startDraw = async () => {
                 if(availablePlayers.length < targetCount) { alert("人數不足"); return; }
@@ -436,9 +514,10 @@
                         )}
                     </div>
 
-                    <div className="absolute bottom-0 w-full p-10 flex flex-col items-center justify-center z-30 pointer-events-none bg-gradient-to-t from-black/80 to-transparent">
+                    <div className="absolute bottom-0 w-full p-10 flex items-center justify-center z-30 pointer-events-none bg-gradient-to-t from-black/80 to-transparent">
+                        
                         {!isDrawing && (
-                            <div className="flex items-center gap-4 mb-6 bg-black/40 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 pointer-events-auto">
+                            <div className="flex items-center gap-4 bg-black/40 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 pointer-events-auto mr-6">
                                 <span className="text-sm font-bold opacity-70">本輪抽出</span>
                                 <button onClick={() => setTargetCount(Math.max(1, targetCount-1))} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20">-</button>
                                 <span className="text-2xl font-black w-8 text-center">{targetCount}</span>
@@ -446,9 +525,16 @@
                                 <span className="text-sm opacity-50 ml-2">人 (剩餘 {availablePlayers.length})</span>
                             </div>
                         )}
-                        <button onClick={startDraw} disabled={isDrawing || availablePlayers.length === 0} className={`pointer-events-auto px-16 py-5 rounded-full font-black text-3xl shadow-2xl transition-all transform flex items-center gap-4 border-4 ${isDrawing ? 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed scale-95' : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-red-900 border-yellow-300 hover:scale-105'}`}>
+                        
+                        <button onClick={startDraw} disabled={isDrawing || availablePlayers.length === 0} className={`pointer-events-auto px-16 py-5 rounded-full font-black text-3xl shadow-2xl transition-all transform flex items-center gap-4 border-4 mr-6 ${isDrawing ? 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed scale-95' : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-red-900 border-yellow-300 hover:scale-105'}`}>
                             {isDrawing ? <><span className="animate-spin">🎲</span> 抽獎中...</> : <>{availablePlayers.length === 0 ? "活動結束" : "🚀 開始抽獎"}</>}
                         </button>
+                        
+                        {!isDrawing && (
+                            <button onClick={resetGame} className="pointer-events-auto bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-500/50 px-6 py-4 rounded-full font-bold transition-all flex flex-col items-center justify-center gap-1">
+                                <span className="text-xl">🔄</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             );
@@ -468,21 +554,19 @@
                 else setMode('index');
             }, []);
 
-            // 處理切換時的資料傳遞
             const handleStartHost = (roomId, players) => {
                 setRoom(roomId);
                 setCachedPlayers(players); 
                 setMode('host');
-                // 不使用 reload，直接切換組件以保持狀態與連線
                 window.history.pushState({}, '', `?mode=host&room=${roomId}`);
             };
 
             return (
-                <>
+                <ErrorBoundary>
                     {mode === 'index' && <IndexPage onStartHost={handleStartHost} initialPlayers={cachedPlayers} />}
                     {mode === 'host' && <HostApp room={room} initialPlayers={cachedPlayers} />}
                     {mode === 'player' && <PlayerApp room={room} />}
-                </>
+                </ErrorBoundary>
             );
         };
 
