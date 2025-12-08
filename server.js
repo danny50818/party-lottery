@@ -10,44 +10,69 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
+// --- 除錯工具：列出所有檔案 ---
+// 這會幫助我們確認 Render 到底抓到了什麼檔案
+function listFiles(dir, fileList = []) {
+    try {
+        const files = fs.readdirSync(dir);
+        files.forEach(file => {
+            const filePath = path.join(dir, file);
+            const stat = fs.statSync(filePath);
+            if (stat.isDirectory()) {
+                if (file !== 'node_modules' && file !== '.git') { // 忽略系統資料夾
+                    listFiles(filePath, fileList);
+                }
+            } else {
+                fileList.push(filePath.replace(__dirname, '.')); // 顯示相對路徑
+            }
+        });
+    } catch (e) {
+        console.error("讀取目錄失敗:", e);
+    }
+    return fileList;
+}
+
+console.log("=== 伺服器啟動診斷開始 ===");
+console.log("Current Directory:", __dirname);
+console.log("File Structure Check:");
+const allFiles = listFiles(__dirname);
+console.log(allFiles.join('\n'));
+console.log("=== 伺服器啟動診斷結束 ===");
+
 // --- 關鍵修正：智慧路徑偵測 ---
 const rootPath = __dirname;
 const publicPath = path.join(__dirname, 'public');
 
-console.log("正在檢查檔案路徑...");
-console.log("根目錄:", rootPath);
+let finalPath = null;
 
-// 檢查 public 資料夾是否存在
+// 檢查 public/index.html
 if (fs.existsSync(path.join(publicPath, 'index.html'))) {
-    console.log("✅ 成功找到 public/index.html，使用 public 資料夾");
-    app.use(express.static(publicPath));
-    
+    console.log("✅ 成功: 在 public/index.html 找到檔案");
+    finalPath = publicPath;
+} 
+// 檢查根目錄 index.html (備案)
+else if (fs.existsSync(path.join(rootPath, 'index.html'))) {
+    console.log("⚠️ 注意: 在根目錄找到 index.html (建議移動到 public 資料夾)");
+    finalPath = rootPath;
+} 
+else {
+    console.error("❌ 嚴重錯誤: 到處都找不到 index.html！請檢查 GitHub 檔案結構。");
+}
+
+if (finalPath) {
+    app.use(express.static(finalPath));
     app.get('*', (req, res) => {
-        res.sendFile(path.join(publicPath, 'index.html'));
+        res.sendFile(path.join(finalPath, 'index.html'));
     });
 } else {
-    console.warn("⚠️ 找不到 public/index.html");
-    
-    // 檢查根目錄是否有 index.html (備案)
-    if (fs.existsSync(path.join(rootPath, 'index.html'))) {
-        console.log("✅ 在根目錄找到 index.html，切換為根目錄模式");
-        app.use(express.static(rootPath));
-        
-        app.get('*', (req, res) => {
-            res.sendFile(path.join(rootPath, 'index.html'));
-        });
-    } else {
-        console.error("❌ 嚴重錯誤：到處都找不到 index.html！");
-        // 列出目前目錄下的所有檔案，幫助除錯
-        console.log("目前目錄下的檔案:", fs.readdirSync(rootPath));
-        if (fs.existsSync(publicPath)) {
-             console.log("public 資料夾內的檔案:", fs.readdirSync(publicPath));
-        }
-        
-        app.get('*', (req, res) => {
-            res.send("Error: index.html not found. Please check Render logs.");
-        });
-    }
+    // 找不到檔案時顯示錯誤頁面，而不是讓伺服器崩潰
+    app.get('*', (req, res) => {
+        res.status(404).send(`
+            <h1>Deployment Error</h1>
+            <p>Could not find index.html.</p>
+            <p>Please check the Render logs for the file structure dump.</p>
+        `);
+    });
 }
 
 // 記憶體資料庫
