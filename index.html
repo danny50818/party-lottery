@@ -5,55 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>家防中心尾牙盛典</title>
     
-    <!-- 1. 全域錯誤攔截 -->
-    <script>
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error("Global Error:", msg, url, lineNo);
-            // 只有嚴重錯誤才顯示在畫面上，避免干擾視覺
-            if (msg.includes('Socket') || msg.includes('React')) {
-                 var container = document.getElementById('global-error');
-                if(!container) {
-                    container = document.createElement('div');
-                    container.id = 'global-error';
-                    container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(100,0,0,0.95);color:white;z-index:9999;padding:20px;overflow:auto;font-family:monospace;white-space:pre-wrap;text-align:left;display:none'; // 預設隱藏
-                    document.body.appendChild(container);
-                }
-                // container.style.display = 'block'; // 測試階段可開啟
-                container.innerHTML += 'Error: ' + msg + '\n';
-            }
-            return false;
-        };
-    </script>
-
-    <!-- CSS Framework -->
+    <!-- 1. 載入 CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&family=Russo+One&display=swap" rel="stylesheet">
     
-    <!-- 2. React & Babel (CDN) -->
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <!-- 2. 載入 程式庫 (增加 onerror 檢測) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js" onerror="alert('React 載入失敗，請檢查網路')"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" onerror="alert('ReactDOM 載入失敗')"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js" onerror="alert('Babel 載入失敗')"></script>
     
-    <!-- 3. 工具庫 (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    
-    <!-- 4. Socket.io Client -->
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" onerror="console.warn('Socket.io CDN failed, will try local')"></script>
 
     <style>
         body { margin: 0; overflow: hidden; font-family: "Noto Sans TC", sans-serif; background: #450a0a; color: white; }
         
-        /* UI Components */
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #450a0a; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease-out;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 5px solid rgba(251, 191, 36, 0.3);
+            border-radius: 50%;
+            border-top-color: #fbbf24;
+            animation: spin 1s linear infinite;
+        }
+
+        /* UI */
         .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
         .gold-text { background: linear-gradient(to bottom, #fde68a, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 10px rgba(217, 119, 6, 0.5); }
         
-        /* Background Effects */
-        .bg-rays { position: absolute; inset: -150%; background: repeating-conic-gradient(from 0deg, #b45309 0deg 10deg, transparent 10deg 20deg); opacity: 0.15; animation: rotate-slow 60s linear infinite; pointer-events: none; }
-        @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
-        /* Game Themes */
+        /* Themes */
         .theme-cyber { background: radial-gradient(circle, #1a1a2e, #16213e, #0f3460); color: #00ffea; }
         .theme-retro { background: radial-gradient(circle, #4a0404, #7f1d1d, #2c0b0e); color: #fcd34d; }
         .theme-space { background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); color: #e0e7ff; }
@@ -64,90 +52,96 @@
         /* Animations */
         @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
         .bubble { position: absolute; animation: floatUp linear infinite; will-change: transform, opacity; bottom: -100px; }
+        
         .neon-text { text-shadow: 0 0 10px rgba(0,255,234,0.7); font-family: 'Russo One', sans-serif; }
-        
-        /* Game Specific Animations */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .wheel-container { transition: transform 6s cubic-bezier(0.1, 0.7, 0.1, 1); } /* 轉盤變慢 */
-        
+        .wheel-container { transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99); }
         .card-flip { transform-style: preserve-3d; transition: transform 0.8s; }
         .card-flip.flipped { transform: rotateY(180deg); }
         .card-face { backface-visibility: hidden; position: absolute; inset: 0; }
         .card-back { transform: rotateY(180deg); }
-        
-        /* Meteor Impact - 簡化版 */
-        @keyframes meteorDrop { 
-            0% { transform: translate(100%, -100%) scale(0.5); opacity: 1; } 
-            70% { transform: translate(0, 0) scale(1.5); opacity: 1; } 
-            100% { transform: translate(-20%, 20%) scale(0.2); opacity: 0; } 
-        }
-        @keyframes impactShake { 
-            0%, 100% { transform: translate(0, 0); } 
-            10%, 90% { transform: translate(-5px, 5px); } 
-            50% { transform: translate(5px, -5px); } 
-        }
-        .animate-impact { animation: impactShake 1s ease-out; }
-
-        /* Slots */
+        @keyframes impactShake { 0%, 100% { transform: translate(0, 0); } 10%, 90% { transform: translate(-5px, 5px); } 50% { transform: translate(5px, -5px); } }
+        .animate-impact { animation: impactShake 0.5s ease-in-out; }
+        @keyframes meteorDrop { 0% { transform: translate(100%, -100%) scale(0.5); opacity: 1; } 70% { transform: translate(0, 0) scale(1.5); opacity: 1; } 100% { transform: translate(-20%, 20%) scale(0.2); opacity: 0; } }
         @keyframes reelBlur { 0% { transform: translateY(0); filter: blur(2px); } 100% { transform: translateY(-50%); filter: blur(2px); } }
         .reel-rolling .reel-track { animation: reelBlur 0.2s linear infinite; }
-        
-        /* Claw Machine */
         @keyframes clawMove { 0% { left: 10%; } 50% { left: 80%; } 100% { left: 10%; } }
-        @keyframes clawGrab { 0% { top: -20px; } 50% { top: 180px; } 100% { top: -20px; } }
+        @keyframes clawGrab { 0% { top: -20px; } 50% { top: 150px; } 100% { top: -20px; } }
         .claw-grabber { position: absolute; width: 60px; height: 60px; top: -20px; left: -28px; transition: top 0.5s; font-size: 3rem; display: flex; justify-content: center; align-items: center; }
         .grabbing .claw-grabber { animation: clawGrab 3s ease-in-out; }
-
-        #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #fbbf24; font-size: 1.5rem; text-align: center; z-index: 50; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-    <div id="loading">系統載入中...<br><span style="font-size:0.8em; opacity:0.7">若久無反應請重新整理</span></div>
+    
+    <!-- 載入畫面 -->
+    <div id="loading-screen">
+        <div class="spinner mb-4"></div>
+        <div class="text-yellow-400 font-bold text-xl">系統啟動中...</div>
+        <div id="loading-debug" class="text-white/30 text-xs mt-4">初始化元件...</div>
+    </div>
+
+    <!-- 錯誤顯示 -->
+    <div id="error-box" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(100,0,0,0.95); color:white; z-index:10000; padding:20px;">
+        <h2 style="font-size:24px; color:#fbbf24; margin-bottom:10px;"⚠️ 發生錯誤</h2>
+        <div id="error-content" style="font-family:monospace; background:rgba(0,0,0,0.5); padding:10px; border-radius:5px;"></div>
+        <button onclick="location.reload()" style="margin-top:20px; padding:10px 20px; background:white; color:black; border-radius:99px;">重新整理</button>
+    </div>
+
+    <script>
+        // 全域錯誤處理
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('error-box').style.display = 'block';
+            document.getElementById('error-content').innerHTML = `Error: ${msg}<br>Line: ${lineNo}`;
+            return false;
+        };
+        
+        // 5秒強制解除載入 (最後防線)
+        setTimeout(() => {
+            const loader = document.getElementById('loading-screen');
+            if(loader && loader.style.display !== 'none') {
+                 // 檢查 React 是否掛載
+                 if(!document.getElementById('root').hasChildNodes()) {
+                     document.getElementById('loading-debug').innerHTML = "載入過久，請檢查網路或重新整理";
+                     document.getElementById('loading-debug').style.color = "red";
+                 } else {
+                     loader.style.display = 'none';
+                 }
+            }
+        }, 5000);
+    </script>
 
     <script type="text/babel">
-        // 使用全域變數，移除 import 語法
         const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
 
-        // 移除載入畫面
+        // 移除 Loading
         const removeLoading = () => {
-            const el = document.getElementById('loading');
-            if(el) el.style.display = 'none';
+            const el = document.getElementById('loading-screen');
+            if(el) {
+                el.style.opacity = '0';
+                setTimeout(() => el.style.display = 'none', 500);
+            }
         };
 
         // --- Error Boundary ---
         class ErrorBoundary extends Component {
-            constructor(props) {
-                super(props);
-                this.state = { hasError: false, error: null };
-            }
-            static getDerivedStateFromError(error) { return { hasError: true, error }; }
-            componentDidCatch(error, errorInfo) { console.error("React Error:", error, errorInfo); }
+            constructor(props) { super(props); this.state = { hasError: false }; }
+            static getDerivedStateFromError(error) { return { hasError: true }; }
+            componentDidCatch(error, info) { console.error(error, info); }
             render() {
                 if (this.state.hasError) {
                     removeLoading();
-                    return (
-                        <div className="h-screen flex flex-col items-center justify-center p-6 bg-red-900 text-white text-center">
-                            <h1 className="text-3xl font-bold mb-4"⚠️ 介面渲染錯誤</h1>
-                            <div className="bg-black/50 p-4 rounded text-left font-mono text-xs overflow-auto max-w-full mb-4 break-all">
-                                {this.state.error && this.state.error.toString()}
-                            </div>
-                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-white text-red-900 px-6 py-3 rounded-full font-bold">
-                                清除快取並重整
-                            </button>
-                        </div>
-                    );
+                    return <div className="h-screen flex flex-col items-center justify-center p-10 bg-red-900 text-white text-center"><h1>⚠️ 介面崩潰</h1><button onClick={()=>window.location.reload()} className="mt-4 px-6 py-2 bg-white text-red-900 rounded-full">重整</button></div>;
                 }
                 return this.props.children;
             }
         }
 
-        // =================================================================
-        //  Socket Hook (連線核心)
-        // =================================================================
+        // --- Socket Hook ---
         const useSocket = (roomId, onEvent) => {
             const socketRef = useRef(null);
             const [status, setStatus] = useState('connecting');
@@ -155,17 +149,16 @@
             useEffect(() => {
                 if(!roomId) return;
                 
+                // 檢查 io 是否存在
                 if (typeof io === 'undefined') {
-                    console.error("Socket.io library not loaded!");
-                    setStatus('error-lib-missing');
+                    setStatus('error-lib');
+                    console.error("Socket.io not found");
                     return;
                 }
 
-                // 自動連線到當前伺服器 (Render)
                 const socket = io({
                     reconnectionAttempts: 5,
-                    timeout: 10000,
-                    transports: ['websocket', 'polling']
+                    timeout: 5000
                 }); 
                 socketRef.current = socket;
 
@@ -176,46 +169,32 @@
                 });
 
                 socket.on('disconnect', () => setStatus('disconnected'));
-                socket.on('connect_error', (err) => {
-                    console.error("Conn Error:", err);
-                    setStatus('error');
-                });
-
-                // 統一事件處理
-                socket.on('player_list_update', (data) => onEvent && onEvent('player_list_update', data));
-                socket.on('game_status_update', (data) => onEvent && onEvent('game_status_update', data));
-                socket.on('init_data', (data) => onEvent && onEvent('init_data', data));
-                socket.on('game_reset', (data) => onEvent && onEvent('game_reset', data));
+                
+                // 事件監聽
+                socket.on('player_list_update', (d) => onEvent && onEvent('player_list_update', d));
+                socket.on('game_status_update', (d) => onEvent && onEvent('game_status_update', d));
+                socket.on('init_data', (d) => onEvent && onEvent('init_data', d));
+                socket.on('game_reset', (d) => onEvent && onEvent('game_reset', d));
 
                 return () => socket.disconnect();
             }, [roomId]);
 
             const emit = (event, data) => {
-                if (socketRef.current) {
-                    socketRef.current.emit(event, { roomId, ...data });
-                }
+                if (socketRef.current) socketRef.current.emit(event, { roomId, ...data });
             };
-
             return { status, emit };
         };
 
-        // =================================================================
-        //  1. 迎賓大廳 (Index Page)
-        // =================================================================
+        // --- 1. Index Page ---
         const IndexPage = ({ onStartHost, initialPlayers }) => {
             const [qrUrl, setQrUrl] = useState('');
             const [roomId, setRoomId] = useState('');
             const [players, setPlayers] = useState(initialPlayers || []);
             
-            const { status } = useSocket(roomId, (event, data) => {
-                if (event === 'player_list_update') {
-                    setPlayers(data);
-                } else if (event === 'init_data' && data.players) {
-                    setPlayers(data.players);
-                }
-                if (event === 'game_reset') {
-                    setPlayers([]);
-                }
+            useSocket(roomId, (evt, data) => {
+                if (evt === 'player_list_update') setPlayers(data);
+                else if (evt === 'init_data' && data.players) setPlayers(data.players);
+                else if (evt === 'game_reset') setPlayers([]);
             });
 
             useEffect(() => {
@@ -226,15 +205,12 @@
 
                 const baseUrl = window.location.href.split('?')[0]; 
                 const playerLink = `${baseUrl}?mode=player&room=${rid}`;
-                
-                if (typeof QRCode !== 'undefined') {
-                    QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (err, url) => {
-                        if(!err) setQrUrl(url);
-                    });
+                if(typeof QRCode !== 'undefined') {
+                    QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (e, u) => !e && setQrUrl(u));
                 }
             }, []);
 
-            const PlayerBubble = ({ player }) => {
+            const PlayerBubble = ({ p }) => {
                 const style = useMemo(() => ({
                     width: `${80 + Math.random() * 60}px`,
                     height: `${80 + Math.random() * 60}px`,
@@ -244,129 +220,63 @@
                 }), []);
                 return (
                     <div className="bubble flex flex-col items-center justify-center bg-yellow-500/20 border border-yellow-300/40 rounded-full text-center shadow-lg backdrop-blur-sm z-0" style={style}>
-                        <div className="text-3xl filter drop-shadow-md">{player.avatar}</div>
-                        <div className="text-white font-bold text-sm mt-1 px-2 truncate w-full shadow-black drop-shadow-md">{player.name}</div>
+                        <div className="text-3xl drop-shadow">{p.avatar}</div>
+                        <div className="text-white font-bold text-sm mt-1 px-2 truncate w-full shadow-black drop-shadow">{p.name}</div>
                     </div>
                 );
             };
 
             const startHost = () => {
                 sessionStorage.setItem(`lottery_players_${roomId}`, JSON.stringify(players));
-                window.location.search = `?mode=host&room=${roomId}`;
+                window.location.href = `?mode=host&room=${roomId}`;
             };
 
             return (
                 <div className="min-h-screen relative overflow-hidden font-sans" style={{background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)'}}>
-                    <div className="absolute top-4 left-4 z-20 flex gap-2 items-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'connected' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
-                            {status === 'connected' ? '● 伺服器連線正常' : '● 連線中...'}
-                        </span>
-                        <span className="text-white/50 text-xs">Room: {roomId}</span>
-                    </div>
-
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden">{players.map(p => <PlayerBubble key={p.id} player={p} />)}</div>
+                    <div className="absolute top-4 left-4 z-20 flex gap-2"><span className="text-white/50 text-xs">Room: {roomId}</span></div>
+                    <div className="absolute inset-0 pointer-events-none">{players.map((p,i) => <PlayerBubble key={i} p={p} />)}</div>
                     <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
                         <div className="text-center mb-8 animate__animated animate__bounceIn">
-                            <div className="inline-block bg-red-900/80 px-8 py-2 rounded-full border border-yellow-500/50 text-yellow-300 font-bold tracking-widest mb-6 shadow-xl backdrop-blur-md">歡迎蒞臨</div>
-                            <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 drop-shadow-2xl tracking-tight mb-4">家防中心尾牙</h1>
-                            <p className="text-red-100/90 text-xl font-light tracking-wider bg-black/20 inline-block px-4 py-1 rounded-lg backdrop-blur-sm">掃描 QR Code 立即簽到</p>
+                            <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 drop-shadow-2xl mb-4">家防中心尾牙</h1>
+                            <p className="text-red-100/90 text-xl font-light bg-black/20 px-4 py-1 rounded-lg">掃描 QR Code 立即簽到</p>
                         </div>
-
-                        <div className="glass-panel p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 max-w-sm w-full mx-auto transform hover:scale-105 transition-transform duration-500">
-                            <div className="bg-white p-4 rounded-3xl shadow-inner">
-                                {qrUrl ? <img src={qrUrl} alt="Scan" className="w-64 h-64 object-contain" /> : <div className="w-64 h-64 flex items-center justify-center text-red-300">Generating...</div>}
-                            </div>
-                            <div className="text-center">
-                                <div className="text-yellow-400 font-black text-4xl mb-1">{players.length} 人</div>
-                                <div className="text-red-200 text-sm font-bold uppercase tracking-widest">已加入連線</div>
-                            </div>
+                        <div className="glass-panel p-8 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 transform hover:scale-105 transition-transform duration-500">
+                            <div className="bg-white p-4 rounded-3xl shadow-inner">{qrUrl ? <img src={qrUrl} alt="Scan" className="w-64 h-64 object-contain" /> : <div className="w-64 h-64 flex items-center justify-center text-red-300">Generating...</div>}</div>
+                            <div className="text-center"><div className="text-yellow-400 font-black text-4xl mb-1">{players.length} 人</div><div className="text-red-200 text-sm font-bold uppercase">已加入連線</div></div>
                         </div>
-                        <div className="absolute bottom-8 right-8">
-                            <button onClick={() => onStartHost(roomId, players)} className="group flex items-center gap-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-red-900 px-8 py-4 rounded-full font-black text-xl shadow-lg transition-all hover:scale-105">
-                                <span>進入大螢幕抽獎</span><span className="text-2xl group-hover:translate-x-1 transition-transform">→</span>
-                            </button>
-                        </div>
+                        <div className="absolute bottom-8 right-8"><button onClick={startHost} className="bg-gradient-to-r from-yellow-600 to-yellow-500 text-red-900 px-8 py-4 rounded-full font-black text-xl shadow-lg hover:scale-105 transition-transform">進入大螢幕抽獎 →</button></div>
                     </div>
                 </div>
             );
         };
 
-        // =================================================================
-        //  2. 玩家端 (Player App)
-        // =================================================================
+        // --- 2. Player App ---
         const PlayerApp = ({ room }) => {
             const [user, setUser] = useState(null);
             const [nameInput, setNameInput] = useState("");
             const [myAvatar, setMyAvatar] = useState(AVATARS[0]);
             const [joined, setJoined] = useState(false);
             const [gameStatus, setGameStatus] = useState({ status: 'lobby' }); 
-            
-            const { status, emit } = useSocket(room, (event, data) => {
-                if (event === 'game_status_update') {
-                    setGameStatus(data);
-                }
-                if (event === 'game_reset') {
-                    localStorage.removeItem('lottery_user');
-                    setUser(null);
-                    setJoined(false);
-                    setGameStatus({ status: 'lobby' });
-                    alert("主持人已重置活動，請重新登入！");
-                }
+            const { status, emit } = useSocket(room, (evt, data) => {
+                if (evt === 'game_status_update') setGameStatus(data);
+                if (evt === 'game_reset') { localStorage.removeItem('lottery_user'); setUser(null); setJoined(false); alert("活動已重置"); }
             });
 
-            // 連線後自動加入 (Rejoin)
             useEffect(() => {
-                if (status === 'connected' && joined && user) {
-                    emit('player_join', { user });
-                }
-            }, [status, joined]);
+                try { const u = JSON.parse(localStorage.getItem('lottery_user')); if (u) { setUser(u); setJoined(true); } } catch(e){}
+            }, []);
+
+            useEffect(() => { if (status === 'connected' && joined && user) emit('player_join', { user }); }, [status, joined]);
 
             const handleJoin = () => {
                 if (!nameInput.trim()) return;
                 const newUser = { id: Date.now() + Math.random().toString().slice(2), name: nameInput.trim(), avatar: myAvatar };
-                setUser(newUser);
-                setJoined(true);
-                localStorage.setItem('lottery_user', JSON.stringify(newUser));
-                emit('player_join', { user: newUser });
+                setUser(newUser); setJoined(true); localStorage.setItem('lottery_user', JSON.stringify(newUser)); emit('player_join', { user: newUser });
             };
-
-            // 自動登入檢查
-            useEffect(() => {
-                try {
-                    const saved = localStorage.getItem('lottery_user');
-                    if (saved) {
-                        const u = JSON.parse(saved);
-                        if (u && u.name && u.avatar) {
-                            setUser(u);
-                            setJoined(true);
-                        } else {
-                            localStorage.removeItem('lottery_user');
-                        }
-                    }
-                } catch(e) {
-                    localStorage.removeItem('lottery_user');
-                }
-            }, []);
 
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
 
-            if (status === 'error-lib-missing') return <div className="h-screen flex items-center justify-center text-red-500 font-bold p-4">Error: Library Missing</div>;
-
-            if (isWinner) return (
-                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 to-black">
-                    <div className="bg-rays"></div>
-                    <div className="relative z-10 text-center p-6 animate__animated animate__zoomInDown">
-                        <div className="text-[10rem] mb-4 animate__animated animate__tada animate__infinite">🏆</div>
-                        <h1 className="text-5xl font-black text-yellow-400 drop-shadow-xl mb-4">恭喜中獎！</h1>
-                        <p className="text-xl text-white">本回合的幸運兒就是你</p>
-                        <div className="mt-8 glass-panel p-6 rounded-2xl flex flex-col items-center gap-4">
-                            <div className="text-6xl">{user?.avatar || '😊'}</div>
-                            <div className="text-3xl font-bold text-white">{user?.name || 'Unknown'}</div>
-                            <div className="bg-red-600 px-6 py-2 rounded-full font-bold animate-pulse">請前往台前領獎</div>
-                        </div>
-                    </div>
-                </div>
-            );
+            if (isWinner) return <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-red-900 to-black"><div className="bg-rays"></div><div className="relative z-10 text-center p-6 animate__animated animate__zoomInDown"><div className="text-[10rem] mb-4 animate__animated animate__tada infinite">🏆</div><h1 className="text-5xl font-black text-yellow-400 drop-shadow-xl mb-4">恭喜中獎！</h1><p className="text-xl text-white">本回合的幸運兒就是你</p><div className="mt-8 glass-panel p-6 rounded-2xl flex flex-col items-center gap-4"><div className="text-6xl">{user?.avatar}</div><div className="text-3xl font-bold text-white">{user?.name}</div></div></div></div>;
 
             if (!joined) return (
                 <div className="min-h-screen bg-gradient-to-br from-red-900 to-black p-6 flex flex-col justify-center">
@@ -381,18 +291,11 @@
                 </div>
             );
 
-            if (!user) return <div className="h-screen flex items-center justify-center text-white">載入資料中...</div>;
-
             return (
                 <div className="min-h-screen bg-gradient-to-b from-red-900 to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-                    <div className="absolute top-4 left-4 text-xs flex gap-2"><span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 'connected' ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>{status === 'connected' ? '● 連線正常' : '● 連線中...'}</span></div>
-                    
+                    <div className="absolute top-4 left-4 text-xs"><span className={`px-3 py-1 rounded-full ${status==='connected'?'bg-green-500 text-black':'bg-red-500'}`}>{status==='connected'?'連線正常':'連線中...'}</span></div>
                     {gameStatus.status === 'playing' ? (
-                        <div className="space-y-8 animate__animated animate__pulse animate__infinite relative z-10">
-                            <div className="text-[8rem] animate-spin">🎲</div>
-                            <div className="text-3xl font-black text-yellow-400">抽獎進行中...</div>
-                            <div className="text-red-200">第 {gameStatus.round} 回合</div>
-                        </div>
+                        <div className="space-y-8 animate__animated animate__pulse infinite relative z-10"><div className="text-[8rem] animate-spin">🎲</div><div className="text-3xl font-black text-yellow-400">抽獎進行中...</div></div>
                     ) : (
                         <div className="w-full space-y-8 animate__animated animate__fadeIn relative z-10">
                             <div className="relative group"><div className="w-40 h-40 mx-auto bg-red-800 rounded-full flex items-center justify-center text-7xl border-4 border-yellow-500 shadow-2xl">{user.avatar}</div></div>
@@ -401,14 +304,12 @@
                             <div className="text-red-300/50">等待主持人開始...</div>
                         </div>
                     )}
-                    <button onClick={() => { if(confirm("登出?")) { localStorage.removeItem('lottery_user'); window.location.reload(); }}} className="absolute bottom-6 text-white/30 text-sm underline z-20">登出</button>
+                    <button onClick={()=>{if(confirm("登出?")){localStorage.removeItem('lottery_user');window.location.reload();}}} className="absolute bottom-6 text-white/30 text-sm underline z-20">登出</button>
                 </div>
             );
         };
 
-        // =================================================================
-        //  3. 大螢幕端 (Host App)
-        // =================================================================
+        // --- 3. Host App ---
         const HostApp = ({ room, initialPlayers }) => {
             const [allPlayers, setAllPlayers] = useState(initialPlayers || []);
             const [winners, setWinners] = useState([]); 
@@ -423,50 +324,36 @@
             const [showWinnerModal, setShowWinnerModal] = useState(false);
             const [modalWinner, setModalWinner] = useState(null);
             
-            const { status, emit } = useSocket(room, (event, data) => {
-                if (event === 'player_list_update') {
-                    setAllPlayers(data);
-                } else if (event === 'init_data') {
-                    if (data.players) setAllPlayers(data.players);
-                }
-                // 重置回饋
-                if (event === 'game_reset') {
-                    setAllPlayers([]);
-                    setWinners([]);
-                    setCurrentRound(0);
-                    setIsDrawing(false);
-                    setDrawQueue([]);
-                }
+            const { emit } = useSocket(room, (evt, data) => {
+                if(evt === 'player_list_update') setAllPlayers(data);
+                if(evt === 'init_data' && data.players) setAllPlayers(data.players);
+                if(evt === 'game_reset') { setAllPlayers([]); setWinners([]); setCurrentRound(0); setIsDrawing(false); }
             });
 
-            // 視覺組件 (簡化，但包含8種模式的渲染邏輯)
+            // 視覺組件
             const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
                 const [display, setDisplay] = useState("READY");
-                // 賽馬專用
                 const [horses, setHorses] = useState([]);
 
                 useEffect(() => {
                     if (isRolling) {
-                        // 1. 賽馬邏輯
-                        if (mode === 'race') {
-                             const racers = candidates.slice(0, 8).map(p => ({...p, progress: 0}));
-                             while(racers.length < 5) racers.push({name:'NPC', avatar:'🐴', progress:0});
-                             setHorses(racers);
-                             const t = setInterval(() => setHorses(prev => prev.map(h => ({...h, progress: Math.min(90, h.progress + Math.random()*2)}))), 100); // 變慢速度
-                             return () => clearInterval(t);
+                        if(mode === 'race') {
+                            const racers = candidates.slice(0, 8).map(p => ({...p, progress: 0}));
+                            while(racers.length < 5) racers.push({name:'NPC', avatar:'🐴', progress:0});
+                            setHorses(racers);
+                            const t = setInterval(() => setHorses(prev => prev.map(h => ({...h, progress: Math.min(90, h.progress + Math.random()*2)}))), 100);
+                            return () => clearInterval(t);
                         } else {
-                            // 通用文字跳動 (降頻到 100ms)
                             const t = setInterval(() => setDisplay(candidates[Math.floor(Math.random()*candidates.length)]?.name || "..."), 100);
                             return () => clearInterval(t);
                         }
                     } else if (targetName) {
                         setDisplay(targetName);
-                        // 賽馬衝線
                         if(mode === 'race' && winnerObj) {
-                             setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 100} : h));
+                            setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 100} : h));
                         }
                     }
-                }, [isRolling, targetName, candidates]);
+                }, [isRolling, targetName]);
 
                 if (mode === 'race') return (
                     <div className="w-full max-w-5xl flex flex-col gap-2 relative p-4 bg-black/20 rounded-xl">
@@ -502,7 +389,7 @@
             }, [allPlayers, winners]);
 
             const resetGame = () => {
-                if(confirm("【警告】確定要重置所有活動紀錄嗎？\n這將清空所有名單並踢出所有使用者。")) {
+                if(confirm("確定重置？")) {
                     emit('reset_game', {});
                     setAllPlayers([]); setWinners([]); setCurrentRound(0); setIsDrawing(false);
                 }
@@ -535,8 +422,7 @@
             };
 
             const processQueue = async (queue, mode) => {
-                // 動畫時間設定 (延長至 6~10秒)
-                const animTime = (mode === 'race' || mode === 'claw') ? 10000 : 6000; 
+                const animTime = (mode === 'race' || mode === 'claw') ? 10000 : 6000;
 
                 await new Promise(r => setTimeout(r, 500));
                 for(let i=0; i<queue.length; i++) {
@@ -544,31 +430,16 @@
                     setIsVisualRolling(true);
                     setCurrentDisplayWinner(null);
                     setShowWinnerModal(false);
-                    
-                    // 1. 滾動/遊戲過程
                     await new Promise(r => setTimeout(r, animTime)); 
-                    
-                    // 2. 揭曉結果
                     setIsVisualRolling(false);
                     setCurrentDisplayWinner(w.name);
                     setCurrentDisplayWinnerObj(w);
-                    
-                    // 3. 停留展示 (2.5秒)
                     await new Promise(r => setTimeout(r, 2500)); 
-                    
-                    // 4. 彈窗恭喜 (5秒)
                     setModalWinner(w);
                     setShowWinnerModal(true);
                     confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
-                    if('speechSynthesis' in window) {
-                        const u = new SpeechSynthesisUtterance(`恭喜 ${w.name} 中獎`);
-                        u.lang = 'zh-TW';
-                        window.speechSynthesis.speak(u);
-                    }
                     await new Promise(r => setTimeout(r, 5000));
                     setShowWinnerModal(false);
-                    
-                    // 更新手機端狀態
                     emit('update_game_status', { status: {status:'result', round: currentRound+1, winnerName: w.name, winnerId: w.id} });
                     await new Promise(r => setTimeout(r, 500));
                 }
@@ -619,17 +490,11 @@
                                 <span className="text-sm opacity-50 ml-2">人 (剩餘 {availablePlayers.length})</span>
                             </div>
                         )}
-                        
                         <div className="flex gap-4 pointer-events-auto">
                             <button onClick={startDraw} disabled={isDrawing || availablePlayers.length === 0} className={`px-16 py-5 rounded-full font-black text-3xl shadow-2xl transition-all transform flex items-center gap-4 border-4 ${isDrawing ? 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed scale-95' : 'bg-gradient-to-r from-yellow-400 to-orange-500 text-red-900 border-yellow-300 hover:scale-105'}`}>
                                 {isDrawing ? <><span className="animate-spin">🎲</span> 抽獎中...</> : <>{availablePlayers.length === 0 ? "活動結束" : "🚀 開始抽獎"}</>}
                             </button>
-                            
-                            {!isDrawing && (
-                                <button onClick={resetGame} className="bg-red-900/80 hover:bg-red-700 text-white border border-red-500 px-6 py-5 rounded-full font-bold transition-all shadow-xl" title="重置活動">
-                                    🔄 重置
-                                </button>
-                            )}
+                            {!isDrawing && <button onClick={resetGame} className="bg-red-900/80 hover:bg-red-700 text-white border border-red-500 px-6 py-5 rounded-full font-bold transition-all shadow-xl" title="重置活動">🔄 重置</button>}
                         </div>
                     </div>
                 </div>
@@ -665,7 +530,6 @@
 
         const root = createRoot(document.getElementById('root'));
         root.render(<App />);
-
         removeLoading();
     </script>
 </body>
