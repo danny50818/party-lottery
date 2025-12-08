@@ -21,22 +21,15 @@
 
     <style>
         body { margin: 0; overflow: hidden; font-family: "Noto Sans TC", sans-serif; background: #450a0a; color: white; }
-        /* 共用樣式 */
         .glass-panel { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
         .gold-text { background: linear-gradient(to bottom, #fde68a, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 2px 10px rgba(217, 119, 6, 0.5); }
-        
-        /* Player 專用 */
         .bg-rays { position: absolute; inset: -150%; background: repeating-conic-gradient(from 0deg, #b45309 0deg 10deg, transparent 10deg 20deg); opacity: 0.15; animation: rotate-slow 60s linear infinite; pointer-events: none; }
         @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        
-        /* Host Themes */
         .theme-cyber { background: radial-gradient(circle, #1a1a2e, #16213e, #0f3460); color: #00ffea; }
         .theme-retro { background: radial-gradient(circle, #4a0404, #7f1d1d, #2c0b0e); color: #fcd34d; }
         .theme-space { background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); color: #e0e7ff; }
         .theme-magic { background: radial-gradient(circle at center, #4c1d95, #2e1065, #000000); color: #d8b4fe; }
         .theme-festival { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%); color: #be185d; }
-        
-        /* Animations */
         @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
         .bubble { position: absolute; animation: floatUp linear infinite; will-change: transform, opacity; bottom: -100px; }
         .neon-text { text-shadow: 0 0 10px rgba(0,255,234,0.7); font-family: 'Russo One', sans-serif; }
@@ -58,8 +51,18 @@
         const { useState, useEffect, useRef, useMemo } = React;
         const { createRoot } = ReactDOM;
         
-        // MQTT 設定 (使用 WebSocket)
+        // 使用更穩定的 MQTT 設定
         const MQTT_BROKER = 'wss://broker.emqx.io:8084/mqtt';
+        const MQTT_OPTIONS = {
+            keepalive: 30,
+            clientId: 'client_' + Math.random().toString(16).substr(2, 8),
+            protocolId: 'MQTT',
+            protocolVersion: 4,
+            clean: true,
+            reconnectPeriod: 1000,
+            connectTimeout: 30 * 1000,
+        };
+
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
 
         // =================================================================
@@ -71,40 +74,40 @@
             const [players, setPlayers] = useState([]);
             const [connected, setConnected] = useState(false);
             const [isLocalhost, setIsLocalhost] = useState(false);
+            const [lastMsgTime, setLastMsgTime] = useState(null);
             const clientRef = useRef(null);
 
             useEffect(() => {
-                // 檢查是否為 localhost
                 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                     setIsLocalhost(true);
                 }
 
-                // 產生隨機房間號 (或沿用 URL 參數)
                 const params = new URLSearchParams(window.location.search);
                 let rid = params.get('room');
                 if(!rid) rid = Math.floor(1000 + Math.random() * 9000).toString();
                 setRoomId(rid);
 
-                // 生成 Player 連結
                 const baseUrl = window.location.href.split('?')[0]; 
                 const playerLink = `${baseUrl}?mode=player&room=${rid}`;
                 QRCode.toDataURL(playerLink, { width: 400, margin: 1, color: { dark: '#7f1d1d', light: '#ffffff' } }, (err, url) => {
                     if(!err) setQrUrl(url);
                 });
 
-                // 連接 MQTT
-                const client = mqtt.connect(MQTT_BROKER);
+                const client = mqtt.connect(MQTT_BROKER, MQTT_OPTIONS);
                 clientRef.current = client;
                 
                 client.on('connect', () => {
+                    console.log(`Index Connected: ${rid}`);
                     setConnected(true);
-                    client.subscribe(`tw_lottery/${rid}/join`);
+                    client.subscribe(`tw_lottery/${rid}/join`, { qos: 0 });
                 });
                 
+                client.on('reconnect', () => console.log('Reconnecting...'));
                 client.on('offline', () => setConnected(false));
 
                 client.on('message', (topic, message) => {
                     try {
+                        setLastMsgTime(Date.now()); // 訊號燈閃爍
                         const newPlayer = JSON.parse(message.toString());
                         setPlayers(prev => {
                             if (prev.some(p => p.id === newPlayer.id)) return prev;
@@ -134,15 +137,18 @@
 
             const startHost = () => {
                 sessionStorage.setItem(`lottery_players_${roomId}`, JSON.stringify(players));
-                window.location.href = `?mode=host&room=${roomId}`;
+                window.location.search = `?mode=host&room=${roomId}`;
             };
 
             return (
                 <div className="min-h-screen relative overflow-hidden font-sans" style={{background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)'}}>
-                    <div className="absolute top-4 left-4 z-20 flex gap-2">
+                    <div className="absolute top-4 left-4 z-20 flex gap-2 items-center">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${connected ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>
-                            {connected ? '● 伺服器連線正常' : '● 連線中...'}
+                            {connected ? '● 連線正常' : '● 連線中...'}
                         </span>
+                        <span className="text-white/50 text-xs">Room: {roomId}</span>
+                        {/* 訊號燈: 收到資料時閃爍 */}
+                        <div className={`w-3 h-3 rounded-full transition-colors duration-200 ${Date.now() - lastMsgTime < 500 ? 'bg-yellow-400' : 'bg-gray-600'}`}></div>
                     </div>
 
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">{players.map(p => <PlayerBubble key={p.id} player={p} />)}</div>
@@ -155,8 +161,8 @@
 
                         {isLocalhost && (
                             <div className="bg-red-600 text-white px-6 py-3 rounded-xl mb-6 shadow-lg animate-pulse font-bold border-2 border-yellow-400">
-                                ⚠️ 警告：請勿使用 localhost！手機無法連線。<br/>
-                                請將網址改為電腦 IP (例如 192.168.x.x)
+                                ⚠️ 警告：目前為 Localhost 模式，手機無法連線。<br/>
+                                請使用電腦 IP (如 192.168.x.x) 開啟網頁。
                             </div>
                         )}
 
@@ -202,24 +208,25 @@
             }, [room]);
 
             const connectMqtt = (u, rid) => {
-                const client = mqtt.connect(MQTT_BROKER);
+                const client = mqtt.connect(MQTT_BROKER, MQTT_OPTIONS);
                 clientRef.current = client;
                 client.on('connect', () => {
                     setConnected(true);
-                    // 初始發送
-                    client.publish(`tw_lottery/${rid}/join`, JSON.stringify(u));
                     client.subscribe(`tw_lottery/${rid}/status`);
-                    
-                    // 心跳機制：每3秒重送一次 join，確保剛進入大螢幕也能收到
-                    // 這是一個簡單的防呆機制
-                    const heartbeat = setInterval(() => {
-                        client.publish(`tw_lottery/${rid}/join`, JSON.stringify(u));
-                    }, 3000);
-                    client.heartbeat = heartbeat; // 暫存以便清除
+                    // 初始發送
+                    publishJoin(client, rid, u);
+                    // 心跳：確保大螢幕能收到
+                    const heartbeat = setInterval(() => publishJoin(client, rid, u), 2000);
+                    client.heartbeat = heartbeat;
                 });
-                
                 client.on('offline', () => setConnected(false));
                 client.on('message', (t, m) => setGameStatus(JSON.parse(m.toString())));
+            };
+
+            const publishJoin = (client, rid, u) => {
+                if(client && client.connected) {
+                    client.publish(`tw_lottery/${rid}/join`, JSON.stringify(u), { qos: 0, retain: false });
+                }
             };
 
             const handleJoin = () => {
@@ -231,18 +238,27 @@
                 connectMqtt(newUser, room);
             };
 
+            const handleResend = () => {
+                if (clientRef.current && user) {
+                    publishJoin(clientRef.current, room, user);
+                    alert("已重送加入請求！");
+                } else {
+                    alert("尚未連線，請稍候...");
+                }
+            };
+
             const logout = () => {
                 if(confirm("確定要登出嗎？")) {
                     localStorage.removeItem(`lottery_user_${room}`);
                     setJoined(false);
                     setNameInput("");
                     if (clientRef.current && clientRef.current.heartbeat) clearInterval(clientRef.current.heartbeat);
+                    if(clientRef.current) clientRef.current.end();
                 }
             };
 
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
 
-            // 中獎特效
             useEffect(() => {
                 if (isWinner) {
                     const end = Date.now() + 5000;
@@ -273,6 +289,7 @@
 
             if (!joined) return (
                 <div className="min-h-screen bg-gradient-to-br from-red-900 to-black p-6 flex flex-col justify-center">
+                    <div className="absolute top-4 right-4 text-white/50 text-xs">Room: {room}</div>
                     <div className="w-full max-w-md mx-auto space-y-8 animate__animated animate__fadeIn">
                         <div className="text-center"><h1 className="text-4xl font-black text-yellow-400">JOIN PARTY</h1><p className="text-red-200">輸入暱稱，加入盛典</p></div>
                         <div className="glass-panel rounded-3xl p-6 space-y-6">
@@ -286,10 +303,10 @@
 
             return (
                 <div className="min-h-screen bg-gradient-to-b from-red-900 to-black text-white flex flex-col items-center justify-center p-8 text-center relative overflow-hidden">
-                    <div className="absolute top-4 right-4 text-xs">
+                    <div className="absolute top-4 left-4 text-xs flex gap-2">
                         <span className={connected ? 'text-green-400' : 'text-red-400'}>● {connected ? '連線正常' : '連線中...'}</span>
                     </div>
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                    <div className="absolute top-4 right-4 text-white/30 text-xs">Room: {room}</div>
                     
                     {gameStatus.status === 'playing' ? (
                         <div className="space-y-8 animate__animated animate__pulse animate__infinite relative z-10">
@@ -303,6 +320,7 @@
                             <div><h2 className="text-5xl font-black mb-3">{user.name}</h2><div className="inline-flex items-center px-5 py-2 rounded-full bg-green-900/50 text-green-400 border border-green-500/30">● 已連線 Ready</div></div>
                             {gameStatus.winnerName && <div className="glass-panel p-6 rounded-2xl animate__animated animate__fadeInUp"><p className="text-yellow-500 text-xs mb-2">上回合得主</p><div className="text-3xl font-black">{gameStatus.winnerName}</div></div>}
                             <div className="text-red-300/50">等待主持人開始...</div>
+                            <button onClick={handleResend} className="text-xs text-yellow-500 border border-yellow-500/30 px-3 py-1 rounded hover:bg-yellow-500/10">沒看到名字? 點此重送</button>
                         </div>
                     )}
                     <button onClick={logout} className="absolute bottom-6 text-white/30 text-sm underline z-20">登出</button>
@@ -327,13 +345,13 @@
             const [showWinnerModal, setShowWinnerModal] = useState(false);
             const [modalWinner, setModalWinner] = useState(null);
             const [connected, setConnected] = useState(false);
+            const [lastMsgTime, setLastMsgTime] = useState(null);
             
             const clientRef = useRef(null);
 
             // --- 視覺組件 ---
             const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
                 const [display, setDisplay] = useState("READY");
-                
                 useEffect(() => {
                     if (isRolling) {
                         const t = setInterval(() => setDisplay(candidates[Math.floor(Math.random()*candidates.length)]?.name || "..."), 50);
@@ -341,37 +359,13 @@
                     } else if (targetName) setDisplay(targetName);
                 }, [isRolling, targetName, candidates]);
 
-                // 針對特定模式的簡單渲染
-                if (mode === 'slots') return (
-                    <div className="flex justify-center gap-4">
-                        {[0,1,2].map(i => <div key={i} className="bg-white h-64 w-48 rounded-xl flex items-center justify-center border-4 border-gray-800 relative overflow-hidden"><div className={`text-6xl font-black text-gray-800 ${isRolling ? 'blur-sm animate-pulse' : 'scale-110'}`}>{isRolling ? display : (winnerObj?.name || targetName)}</div></div>)}
-                    </div>
-                );
-                
-                if (mode === 'meteor') return (
-                    <div className={`flex flex-col items-center justify-center h-full relative overflow-hidden ${isRolling ? '' : 'animate-impact'}`}>
-                        {isRolling && <div className="absolute inset-0 flex justify-center items-center"><div className="text-4xl text-white/50 animate-pulse">流星許願中...</div></div>}
-                        {!isRolling && targetName && <div className="z-20 text-center animate__animated animate__zoomIn"><div className="text-[120px] mb-2">☄️</div><div className="text-8xl font-black text-white drop-shadow-2xl">{targetName}</div></div>}
-                    </div>
-                );
-
-                return (
-                    <div className="flex flex-col items-center justify-center">
-                        <div className={`text-9xl font-black neon-text transition-all duration-300 ${isRolling ? 'opacity-80 blur-sm' : 'opacity-100 scale-125 text-yellow-400'}`}>{display}</div>
-                        {mode === 'radar' && isRolling && <div className="text-green-400 mt-4 tracking-widest animate-pulse">SCANNING...</div>}
-                    </div>
-                );
+                if (mode === 'slots') return (<div className="flex justify-center gap-4">{[0,1,2].map(i => <div key={i} className="bg-white h-64 w-48 rounded-xl flex items-center justify-center border-4 border-gray-800 relative overflow-hidden"><div className={`text-6xl font-black text-gray-800 ${isRolling ? 'blur-sm animate-pulse' : 'scale-110'}`}>{isRolling ? display : (winnerObj?.name || targetName)}</div></div>)}</div>);
+                if (mode === 'meteor') return (<div className={`flex flex-col items-center justify-center h-full relative overflow-hidden ${isRolling ? '' : 'animate-impact'}`}>{isRolling && <div className="absolute inset-0 flex justify-center items-center"><div className="text-4xl text-white/50 animate-pulse">流星許願中...</div></div>}{!isRolling && targetName && <div className="z-20 text-center animate__animated animate__zoomIn"><div className="text-[120px] mb-2">☄️</div><div className="text-8xl font-black text-white drop-shadow-2xl">{targetName}</div></div>}</div>);
+                return (<div className="flex flex-col items-center justify-center"><div className={`text-9xl font-black neon-text transition-all duration-300 ${isRolling ? 'opacity-80 blur-sm' : 'opacity-100 scale-125 text-yellow-400'}`}>{display}</div>{mode === 'radar' && isRolling && <div className="text-green-400 mt-4 tracking-widest animate-pulse">SCANNING...</div>}</div>);
             };
 
             const GAME_MODES = [
-                { id: 'cyber', name: '矩陣滾動', theme: 'theme-cyber' },
-                { id: 'retro', name: '幸運轉盤', theme: 'theme-retro' },
-                { id: 'magic', name: '命運塔羅', theme: 'theme-magic' },
-                { id: 'space', name: '雷達鎖定', theme: 'theme-space' },
-                { id: 'vegas', name: '黃金拉霸', theme: 'theme-retro' },
-                { id: 'meteor', name: '流星降臨', theme: 'theme-space' },
-                { id: 'gasha', name: '歡樂扭蛋', theme: 'theme-festival' },
-                { id: 'battle', name: '生存淘汰', theme: 'theme-cyber' },
+                { id: 'cyber', name: '矩陣滾動', theme: 'theme-cyber' }, { id: 'retro', name: '幸運轉盤', theme: 'theme-retro' }, { id: 'magic', name: '命運塔羅', theme: 'theme-magic' }, { id: 'space', name: '雷達鎖定', theme: 'theme-space' }, { id: 'vegas', name: '黃金拉霸', theme: 'theme-retro' }, { id: 'meteor', name: '流星降臨', theme: 'theme-space' }, { id: 'gasha', name: '歡樂扭蛋', theme: 'theme-festival' }, { id: 'battle', name: '生存淘汰', theme: 'theme-cyber' },
             ];
             const [unusedModes, setUnusedModes] = useState([...GAME_MODES.map(m => m.id)]);
 
@@ -379,23 +373,27 @@
                 const storedPlayers = sessionStorage.getItem(`lottery_players_${room}`);
                 if (storedPlayers) setAllPlayers(JSON.parse(storedPlayers));
 
-                const client = mqtt.connect(MQTT_BROKER);
+                const client = mqtt.connect(MQTT_BROKER, MQTT_OPTIONS);
                 clientRef.current = client;
                 client.on('connect', () => {
                     setConnected(true);
-                    client.subscribe(`tw_lottery/${room}/join`);
+                    console.log(`Host connected: ${room}`);
+                    client.subscribe(`tw_lottery/${room}/join`, { qos: 0 });
                 });
                 client.on('offline', () => setConnected(false));
                 
                 client.on('message', (t, m) => {
                     if (t.endsWith('/join')) {
-                        const p = JSON.parse(m.toString());
-                        setAllPlayers(prev => {
-                            if (prev.some(x => x.id === p.id)) return prev;
-                            const list = [...prev, p];
-                            sessionStorage.setItem(`lottery_players_${room}`, JSON.stringify(list));
-                            return list;
-                        });
+                        setLastMsgTime(Date.now());
+                        try {
+                            const p = JSON.parse(m.toString());
+                            setAllPlayers(prev => {
+                                if (prev.some(x => x.id === p.id)) return prev;
+                                const list = [...prev, p];
+                                sessionStorage.setItem(`lottery_players_${room}`, JSON.stringify(list));
+                                return list;
+                            });
+                        } catch(e){}
                     }
                 });
                 return () => client.end();
@@ -408,7 +406,6 @@
 
             const startDraw = async () => {
                 if(availablePlayers.length < targetCount) { alert("人數不足"); return; }
-                
                 let nextModes = [...unusedModes];
                 if(nextModes.length === 0) nextModes = GAME_MODES.map(m=>m.id);
                 const rIdx = Math.floor(Math.random()*nextModes.length);
@@ -429,9 +426,7 @@
                     pool.splice(idx,1);
                 }
                 setWinners(prev => [...prev, ...roundWinners]);
-                
-                if(clientRef.current) clientRef.current.publish(`tw_lottery/${room}/status`, JSON.stringify({status:'playing', round: nextRound}));
-
+                if(clientRef.current) clientRef.current.publish(`tw_lottery/${room}/status`, JSON.stringify({status:'playing', round: nextRound}), {qos:0, retain:false});
                 await processQueue(roundWinners);
             };
 
@@ -442,15 +437,11 @@
                     setIsVisualRolling(true);
                     setCurrentDisplayWinner(null);
                     setShowWinnerModal(false);
-                    
                     await new Promise(r => setTimeout(r, 3500)); 
-                    
                     setIsVisualRolling(false);
                     setCurrentDisplayWinner(w.name);
                     setCurrentDisplayWinnerObj(w);
-                    
                     await new Promise(r => setTimeout(r, 1500)); 
-                    
                     setModalWinner(w);
                     setShowWinnerModal(true);
                     confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
@@ -459,12 +450,9 @@
                         u.lang = 'zh-TW';
                         window.speechSynthesis.speak(u);
                     }
-
                     await new Promise(r => setTimeout(r, 3000));
                     setShowWinnerModal(false);
-
-                    if(clientRef.current) clientRef.current.publish(`tw_lottery/${room}/status`, JSON.stringify({status:'result', round: currentRound+1, winnerName: w.name, winnerId: w.id}));
-                    
+                    if(clientRef.current) clientRef.current.publish(`tw_lottery/${room}/status`, JSON.stringify({status:'result', round: currentRound+1, winnerName: w.name, winnerId: w.id}), {qos:0, retain:true});
                     await new Promise(r => setTimeout(r, 500));
                 }
                 setIsDrawing(false);
@@ -474,7 +462,6 @@
 
             return (
                 <div className={`h-screen flex flex-col relative overflow-hidden font-sans transition-colors duration-1000 ${currentConfig.theme}`}>
-                    {/* Winner Modal */}
                     {showWinnerModal && modalWinner && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate__animated animate__fadeIn">
                             <div className="bg-red-900 border-4 border-yellow-500 rounded-[3rem] p-12 text-center animate__animated animate__zoomInDown shadow-[0_0_100px_rgba(255,215,0,0.5)]">
@@ -491,9 +478,10 @@
                             <span className="font-bold text-2xl mr-2">{currentRound === 0 ? "準備開始" : `第 ${currentRound} 回合`}</span>
                             {isDrawing && <span className="bg-red-600 text-white text-xs px-2 py-1 rounded animate-pulse">LIVE - {currentConfig.name}</span>}
                         </div>
-                        <div className="flex gap-2">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold self-center ${connected ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>{connected ? 'Online' : 'Offline'}</span>
-                            <div className="glass-panel px-6 py-3 rounded-full text-white/80 font-mono">人數: {allPlayers.length}</div>
+                        <div className="flex gap-2 items-center">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${connected ? 'bg-green-500 text-black' : 'bg-red-500 text-white'}`}>{connected ? 'Online' : 'Offline'}</span>
+                            <div className={`w-3 h-3 rounded-full transition-colors duration-200 ${Date.now() - lastMsgTime < 500 ? 'bg-yellow-400' : 'bg-gray-600'}`}></div>
+                            <div className="glass-panel px-6 py-3 rounded-full text-white/80 font-mono">Room: {room} | 人數: {allPlayers.length}</div>
                         </div>
                     </div>
 
@@ -501,6 +489,7 @@
                         {allPlayers.length === 0 ? (
                             <div className="text-center animate__animated animate__fadeIn">
                                 <div className="text-4xl opacity-50 mb-4 font-bold">等待玩家加入...</div>
+                                <div className="text-xl opacity-30 mt-2">請掃描首頁 QR Code</div>
                             </div>
                         ) : (
                             <VisualComponent candidates={availablePlayers.concat(drawQueue)} targetName={currentDisplayWinner} isRolling={isVisualRolling} mode={gameMode} winnerObj={currentDisplayWinnerObj} />
