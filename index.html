@@ -16,7 +16,7 @@
     <!-- CSS Framework -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
     
     <!-- 2. React & Babel -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -29,13 +29,14 @@
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 
     <style>
-        /* 字體設定：微軟正黑體優先 */
+        /* 字體設定 */
         body { 
             margin: 0; 
             overflow: hidden; 
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
-            background-color: #2b0000;
+            background-color: #1a0000; /* 極深紅底色 */
             color: #fff;
+            font-weight: bold;
             image-rendering: pixelated;
         }
 
@@ -46,20 +47,34 @@
         .pixel-btn:active { transform: translateY(4px); }
         .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; text-shadow: none; }
 
-        /* --- 紅色流動方格背景 (Retro Grid) --- */
+        /* --- 3D 立體動態背景 (關鍵修正) --- */
         .retro-grid-container {
-            position: fixed; width: 200vw; height: 200vh; left: -50%; top: -50%;
-            transform: perspective(400px) rotateX(60deg) translateY(0) translateZ(-100px);
-            z-index: -1; pointer-events: none; overflow: hidden;
+            position: fixed; width: 200%; height: 150%; left: -50%; top: -25%;
+            transform: perspective(300px) rotateX(40deg); /* 調整透視角度 */
+            z-index: -10; 
+            pointer-events: none; 
+            overflow: hidden;
         }
         .retro-grid {
             position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background-image: linear-gradient(to right, rgba(255, 50, 50, 0.4) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 50, 50, 0.4) 1px, transparent 1px);
-            background-size: 60px 60px;
-            animation: grid-scroll 3s linear infinite;
+            /* 亮紅色網格線 */
+            background-image: 
+                linear-gradient(to right, rgba(255, 50, 50, 0.5) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 50, 50, 0.5) 1px, transparent 1px);
+            background-size: 80px 80px;
+            animation: grid-scroll 2s linear infinite;
+            box-shadow: 0 0 150px rgba(255, 0, 0, 0.3);
         }
-        .retro-grid-mask { position: fixed; top: 0; left: 0; width: 100%; height: 60%; background: linear-gradient(to bottom, #1a0000 0%, transparent 40%, #1a0000 100%); z-index: -1; pointer-events: none; }
-        @keyframes grid-scroll { 0% { transform: translateY(0); } 100% { transform: translateY(60px); } }
+        /* 遠處漸層遮罩 (讓網格有消失在地平線的感覺) */
+        .retro-grid-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #1a0000 0%, transparent 40%);
+            z-index: -5; pointer-events: none;
+        }
+        @keyframes grid-scroll { 
+            0% { transform: translateY(0); } 
+            100% { transform: translateY(80px); } 
+        }
 
         /* Loading */
         #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2b0000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -68,7 +83,7 @@
 
         /* Game Animations */
         @keyframes horse-gallop { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
-        .horse-sprite { animation: horse-gallop 0.15s steps(2) infinite; display: inline-block; transform: scaleX(1); } /* 修正：讓馬面朝右 */
+        .horse-sprite { animation: horse-gallop 0.15s steps(2) infinite; display: inline-block; transform: scaleX(1); }
         @keyframes reel-spin { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
         .reel-spinning .reel-content { animation: reel-spin 0.1s linear infinite; filter: blur(2px); }
         @keyframes claw-drop-anim { 0% { top: 10%; } 50% { top: 60%; } 100% { top: 10%; } }
@@ -83,11 +98,17 @@
         .animate-impact { animation: impactShake 0.5s ease-in-out; }
         @keyframes laser-shoot { 0% { bottom: 80px; opacity: 1; } 100% { bottom: 100%; opacity: 0; } }
         .laser-beam { position: absolute; width: 6px; height: 20px; background: #0f0; animation: laser-shoot 0.3s linear infinite; }
+        
+        .card-flip { transform-style: preserve-3d; transition: transform 0.8s; }
+        .card-flip.flipped { transform: rotateY(180deg); }
+        .card-face { backface-visibility: hidden; position: absolute; inset: 0; }
+        .card-back { transform: rotateY(180deg); }
     </style>
 </head>
 <body>
     <div id="root"></div>
     
+    <!-- 背景結構 -->
     <div class="retro-grid-mask"></div>
     <div class="retro-grid-container">
         <div class="retro-grid"></div>
@@ -136,7 +157,7 @@
             return { status, emit };
         };
 
-        // --- 視覺組件 (獨立於 HostApp 外部) ---
+        // --- 視覺組件 ---
         const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
             const [display, setDisplay] = useState("READY");
             const [horses, setHorses] = useState([]);
@@ -153,7 +174,7 @@
             };
             const getDisplayString = (player) => {
                 const index = candidates.findIndex(p => p.id === player.id) + 1;
-                return `${getDisplayName(player)} - ${player.name}`;
+                return `No.${index} - ${player.name}`;
             };
             
             useEffect(() => {
@@ -162,17 +183,19 @@
                     setSlotStops([false, false, false]);
                     setClawState('moving');
                     setCardFlipped(false);
-                    setImpact(false); // 重置撞擊
-                    
+                    setImpact(false);
+                    setMarioState('running');
+                    setShooterState('moving');
+
                     if (mode === 'race') {
-                        const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: getDisplayName(p), progress: 0}));
+                        const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: p.name, progress: 0}));
                         while(racers.length < 5) racers.push({name:'CPU', displayName:`NPC`, avatar:'🐎', progress:0});
                         setHorses(racers);
                         interval = setInterval(() => {
                             setHorses(prev => prev.map(h => ({...h, progress: Math.min(88, h.progress + Math.random() * 2)})));
                         }, 100);
                     } else if (mode === 'slots') {
-                         // Slots 靠 CSS 動畫
+                         // Slots
                     } else if (mode === 'adventure') {
                          setMarioState('running');
                     } else if (mode === 'shooter') {
@@ -180,8 +203,8 @@
                     } else {
                         // 通用文字跳動
                         interval = setInterval(() => {
-                            const randomIdx = Math.floor(Math.random() * candidates.length);
-                            setDisplay(`No.${randomIdx + 1}`);
+                            const randomPlayer = candidates[Math.floor(Math.random() * candidates.length)];
+                            setDisplay(randomPlayer ? randomPlayer.name : "...");
                         }, 80);
                     }
                 } else if (targetName) {
@@ -208,7 +231,7 @@
                     <div className="absolute right-10 top-0 bottom-0 w-2 bg-yellow-400 z-10 opacity-70 border-r-4 border-dashed border-black"></div>
                     {horses.map((h, i) => (
                         <div key={i} className="flex items-center gap-2 relative border-b-2 border-white/20 pb-1 h-16">
-                            <div className="w-24 text-right text-xs font-bold text-white bg-black px-1 truncate">{h.displayName}</div>
+                            <div className="w-24 text-right text-lg font-bold text-white bg-black px-1 truncate">{h.displayName}</div>
                             <div className="flex-1 relative h-full">
                                 <div className="absolute top-1/2 -translate-y-1/2 text-4xl transition-all duration-300 ease-linear transform -translate-x-full horse-sprite" style={{left: `${h.progress}%`}}>{h.avatar}</div>
                             </div>
@@ -254,7 +277,7 @@
             
             // 4. 流星 (Meteor)
             if (mode === 'meteor') return (
-                <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-visible theme-space ${impact ? 'animate-impact' : ''}`}>
+                <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-visible theme-space`}>
                     {isRolling && <div className="text-yellow-400 text-3xl animate-pulse tracking-widest">✨ 許願中... ✨</div>}
                     {!isRolling && targetName && (
                         <div className="z-20 text-center relative w-full h-full flex flex-col items-center justify-center">
@@ -327,7 +350,7 @@
                 </div>
             );
 
-            // 9. 迷宮 (Maze) - 通用文字跳動
+            // 9. 迷宮 (Maze)
             if (mode === 'maze') return (
                  <div className="flex flex-col items-center justify-center text-center w-full h-full theme-maze">
                     <div className="pixel-box p-8 bg-black border-4 border-blue-600">
@@ -370,11 +393,11 @@
 
             const PlayerBubble = ({ p }) => {
                 const style = useMemo(() => ({ width: `${80+Math.random()*60}px`, height: `${80+Math.random()*60}px`, left: `${5+Math.random()*90}%`, animationDuration: `${10+Math.random()*15}s`, animationDelay: `${Math.random()*-15}s` }), []);
-                return <div className="bubble-pixel flex flex-col items-center justify-center bg-yellow-500/20 border border-yellow-300/40 rounded-full text-center shadow-lg backdrop-blur-sm z-0" style={style}><div className="text-3xl drop-shadow">{p.avatar}</div><div className="text-white font-bold text-sm mt-1 px-2 truncate w-full shadow-black drop-shadow">{p.name}</div></div>;
+                return <div className="bubble flex flex-col items-center justify-center bg-yellow-500/20 border border-yellow-300/40 rounded-full text-center shadow-lg backdrop-blur-sm z-0" style={style}><div className="text-3xl drop-shadow">{p.avatar}</div><div className="text-white font-bold text-sm mt-1 px-2 truncate w-full shadow-black drop-shadow">{p.name}</div></div>;
             };
 
             return (
-                <div className="min-h-screen relative overflow-hidden">
+                <div className="min-h-screen relative overflow-hidden" style={{backgroundColor: 'transparent'}}>
                     <div className="retro-grid-mask"></div><div className="retro-grid-container"><div className="retro-grid"></div></div>
 
                     <div className="absolute top-4 left-4 z-20 flex gap-2"><span className="pixel-box px-2 py-1 text-xs bg-blue-300 text-black">ROOM: {roomId}</span></div>
@@ -398,19 +421,26 @@
             const [myAvatar, setMyAvatar] = useState(AVATARS[0]);
             const [joined, setJoined] = useState(false);
             const [gameStatus, setGameStatus] = useState({ status: 'lobby' }); 
+            const [playerIndex, setPlayerIndex] = useState(0);
+
             const { status, emit } = useSocket(room, (evt, data) => {
                 if (evt === 'game_status_update') setGameStatus(data);
                 if (evt === 'game_reset') { localStorage.removeItem('lottery_user'); setUser(null); setJoined(false); alert("GAME RESET"); }
+                if (evt === 'init_data' && data.players && user) {
+                    const idx = data.players.findIndex(p => p.id === user.id);
+                    if(idx !== -1) setPlayerIndex(idx+1);
+                }
             });
+
             useEffect(() => { try { const u = JSON.parse(localStorage.getItem('lottery_user')); if (u) { setUser(u); setJoined(true); } } catch(e){} }, []);
             useEffect(() => { if (status === 'connected' && joined && user) emit('player_join', { user }); }, [status, joined]);
             const handleJoin = () => { if(!nameInput.trim()) return; const newUser = { id: Date.now().toString(), name: nameInput.trim(), avatar: myAvatar }; setUser(newUser); setJoined(true); localStorage.setItem('lottery_user', JSON.stringify(newUser)); emit('player_join', { user: newUser }); };
             
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
 
-            if(isWinner) return <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center"><div className="animate__animated animate__tada animate__infinite text-9xl mb-6">🏆</div><div className="pixel-box-dark p-6 mb-4"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div><div className="pixel-box p-4 flex flex-col items-center"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">{user?.name}</div></div></div>;
-            if(!joined) return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4"><div className="pixel-box p-6 w-full max-w-sm text-center"><h1 className="text-xl mb-6 text-blue-600">PLAYER JOIN</h1><div className="grid grid-cols-4 gap-2 mb-6">{AVATARS.slice(0, 8).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-2xl p-2 border-2 ${myAvatar === a ? 'border-blue-500 bg-blue-100' : 'border-transparent'}`}>{a}</button>)}</div><input type="text" className="w-full border-4 border-black p-3 font-mono text-center mb-6 text-black" placeholder="YOUR NAME" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={8} /><button onClick={handleJoin} className="pixel-btn pixel-btn-blue w-full py-4 text-lg">ENTER</button></div></div>;
-            return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4"><div className="absolute top-2 right-2 text-[10px] text-green-400">{status}</div>{gameStatus.status === 'playing' ? <div className="text-center animate-pulse"><div className="text-6xl mb-4">🎲</div><div className="text-yellow-400 text-xl">ROLLING...</div></div> : <div className="text-center w-full max-w-sm"><div className="pixel-box-dark p-8 mb-6"><div className="text-6xl mb-4">{user.avatar}</div><div className="text-2xl text-yellow-400">{user.name}</div><div className="mt-4 text-xs text-green-400 border border-green-400 px-2 py-1 inline-block">READY</div></div></div>}</div>;
+            if(isWinner) return <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center"><div className="animate__animated animate__tada animate__infinite text-9xl mb-6">🏆</div><div className="pixel-box-dark p-6 mb-4"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div><div className="pixel-box p-4 flex flex-col items-center"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">No.{playerIndex}<br/>{user?.name}</div></div></div>;
+            if(!joined) return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4"><div className="pixel-box p-6 w-full max-w-sm text-center"><h1 className="text-xl mb-6 text-blue-600">PLAYER JOIN</h1><div className="grid grid-cols-4 gap-2 mb-6">{AVATARS.slice(0, 8).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-2xl p-2 border-2 ${myAvatar === a ? 'border-blue-500 bg-blue-100' : 'border-transparent'}`}>{a}</button>)}</div><input type="text" className="w-full border-4 border-black p-3 font-mono text-center mb-6 text-black" placeholder="YOUR NAME" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={8} /><button onClick={handleJoin} className="pixel-btn pixel-btn-yellow w-full py-4 text-lg">ENTER</button></div></div>;
+            return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4"><div className="absolute top-2 right-2 text-[10px] text-green-400">{status}</div>{gameStatus.status === 'playing' ? <div className="text-center animate-pulse"><div className="text-6xl mb-4">🎲</div><div className="text-yellow-400 text-xl">ROLLING...</div></div> : <div className="text-center w-full max-w-sm"><div className="pixel-box-dark p-8 mb-6"><div className="text-6xl mb-4">{user.avatar}</div><div className="text-2xl text-yellow-400">No.{playerIndex}<br/><span className="text-sm text-white">{user.name}</span></div><div className="mt-4 text-xs text-green-400 border border-green-400 px-2 py-1 inline-block">READY</div></div></div>}</div>;
         };
 
         // --- 3. Host App ---
@@ -425,7 +455,7 @@
             const { emit } = useSocket(room, (evt, data) => {
                 if(evt === 'player_list_update') setAllPlayers(data);
                 if(evt === 'init_data' && data.players) setAllPlayers(data.players);
-                if(evt === 'game_reset') { setAllPlayers([]); setWinners([]); setIsDrawing(false); }
+                if(evt === 'game_reset') { setAllPlayers([]); setWinners([]); setIsDrawing(false); setDrawQueue([]); }
             });
 
             const MODES = [
@@ -529,6 +559,7 @@
                 const m = p.get('mode'); const r = p.get('room');
                 if (m === 'host' && r) { setMode('host'); setRoom(r); }
                 else if (m === 'player' && r) { setMode('player'); setRoom(r); }
+                else setMode('index');
             }, []);
             const handleStartHost = (rid, ps) => {
                 sessionStorage.setItem(`lottery_players_${rid}`, JSON.stringify(ps));
