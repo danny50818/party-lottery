@@ -34,7 +34,7 @@
             margin: 0; 
             overflow: hidden; 
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
-            background-color: #2b0000; /* 深紅底色 */
+            background-color: #2b0000;
             color: #fff;
             image-rendering: pixelated;
         }
@@ -68,7 +68,7 @@
 
         /* Game Animations */
         @keyframes horse-gallop { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
-        .horse-sprite { animation: horse-gallop 0.15s steps(2) infinite; display: inline-block; }
+        .horse-sprite { animation: horse-gallop 0.15s steps(2) infinite; display: inline-block; transform: scaleX(1); } /* 修正：讓馬面朝右 */
         @keyframes reel-spin { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
         .reel-spinning .reel-content { animation: reel-spin 0.1s linear infinite; filter: blur(2px); }
         @keyframes claw-drop-anim { 0% { top: 10%; } 50% { top: 60%; } 100% { top: 10%; } }
@@ -162,10 +162,8 @@
                     setSlotStops([false, false, false]);
                     setClawState('moving');
                     setCardFlipped(false);
-                    setMarioState('running');
-                    setShooterState('moving');
-                    setImpact(false);
-
+                    setImpact(false); // 重置撞擊
+                    
                     if (mode === 'race') {
                         const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: getDisplayName(p), progress: 0}));
                         while(racers.length < 5) racers.push({name:'CPU', displayName:`NPC`, avatar:'🐎', progress:0});
@@ -173,7 +171,14 @@
                         interval = setInterval(() => {
                             setHorses(prev => prev.map(h => ({...h, progress: Math.min(88, h.progress + Math.random() * 2)})));
                         }, 100);
-                    } else if (mode !== 'slots' && mode !== 'claw' && mode !== 'retro' && mode !== 'magic') {
+                    } else if (mode === 'slots') {
+                         // Slots 靠 CSS 動畫
+                    } else if (mode === 'adventure') {
+                         setMarioState('running');
+                    } else if (mode === 'shooter') {
+                         setShooterState('moving');
+                    } else {
+                        // 通用文字跳動
                         interval = setInterval(() => {
                             const randomIdx = Math.floor(Math.random() * candidates.length);
                             setDisplay(`No.${randomIdx + 1}`);
@@ -249,7 +254,7 @@
             
             // 4. 流星 (Meteor)
             if (mode === 'meteor') return (
-                <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-visible theme-space`}>
+                <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-visible theme-space ${impact ? 'animate-impact' : ''}`}>
                     {isRolling && <div className="text-yellow-400 text-3xl animate-pulse tracking-widest">✨ 許願中... ✨</div>}
                     {!isRolling && targetName && (
                         <div className="z-20 text-center relative w-full h-full flex flex-col items-center justify-center">
@@ -322,7 +327,7 @@
                 </div>
             );
 
-            // 9. 迷宮 (Maze)
+            // 9. 迷宮 (Maze) - 通用文字跳動
             if (mode === 'maze') return (
                  <div className="flex flex-col items-center justify-center text-center w-full h-full theme-maze">
                     <div className="pixel-box p-8 bg-black border-4 border-blue-600">
@@ -465,18 +470,15 @@
                 for (let i = 0; i < winnersList.length; i++) {
                     const w = winnersList[i];
                     
-                    // 滾動階段
                     setDisplayState({ rolling: true, winner: null, text: "ROLLING" });
                     
                     await new Promise(r => setTimeout(r, duration)); 
                     
-                    // 揭曉
                     setDisplayState({ rolling: false, winner: w, text: `No.${allPlayers.findIndex(p => p.id === w.id)+1}` });
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                     
                     await new Promise(r => setTimeout(r, 2000)); 
                     
-                    // 彈窗停留
                     await new Promise(r => setTimeout(r, 5000));
                     
                     emit('update_game_status', { status: { status: 'result', winnerName: w.name, winnerId: w.id } });
