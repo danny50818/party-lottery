@@ -5,31 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>家防中心尾牙盛典</title>
     
-    <!-- 1. 錯誤攔截 -->
+    <!-- 強制顯示機制：5秒後如果還卡住，自動移除遮罩並顯示除錯資訊 -->
     <script>
-        window.onerror = function(msg, url, line, col, error) {
-            console.error("Global Error:", msg);
-            return false;
+        window.onload = function() {
+            setTimeout(function() {
+                var loader = document.getElementById('loading-screen');
+                if (loader) {
+                    loader.style.opacity = '0';
+                    setTimeout(function(){ loader.style.display = 'none'; }, 500);
+                    // 檢查是否成功渲染
+                    if(!document.getElementById('root').hasChildNodes()) {
+                        alert("連線逾時或設定錯誤！\n請檢查 index.html 中的 BACKEND_URL 是否已填寫正確。");
+                    }
+                }
+            }, 5000); // 5秒強制解除
+        };
+
+        window.onerror = function(msg, url, line) {
+            alert("系統錯誤: " + msg + "\n行數: " + line);
+            document.getElementById('loading-screen').style.display = 'none';
         };
     </script>
 
     <!-- CSS Framework -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;900&display=swap" rel="stylesheet">
     
-    <!-- 2. React & Babel -->
+    <!-- React & Babel -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 3. Tools -->
+    <!-- Tools -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 
     <style>
-        /* 字體設定 */
+        /* 字體設定：微軟正黑體優先 */
         body { 
             margin: 0; 
             overflow: hidden; 
@@ -47,7 +61,7 @@
         .pixel-btn:active { transform: translateY(4px); }
         .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; text-shadow: none; }
 
-        /* 背景 */
+        /* --- 紅色流動方格背景 --- */
         .retro-grid-container {
             position: fixed; width: 200vw; height: 200vh; left: -50%; top: -50%;
             transform: perspective(400px) rotateX(60deg) translateY(0) translateZ(-100px);
@@ -63,7 +77,7 @@
         @keyframes grid-scroll { 0% { transform: translateY(0); } 100% { transform: translateY(60px); } }
 
         /* Loading */
-        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2b0000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #2b0000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
         .pixel-spinner { width: 48px; height: 48px; background: #fbbf24; animation: pixel-spin 0.8s steps(4) infinite; box-shadow: 4px 4px 0 #b45309; }
         @keyframes pixel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -84,22 +98,6 @@
         .animate-impact { animation: impactShake 0.5s ease-in-out; }
         @keyframes laser-shoot { 0% { bottom: 80px; opacity: 1; } 100% { bottom: 100%; opacity: 0; } }
         .laser-beam { position: absolute; width: 6px; height: 20px; background: #0f0; animation: laser-shoot 0.3s linear infinite; }
-        @keyframes meteor-rain { 0% { transform: translate(100%, -100%) scale(0.5); opacity: 1; } 100% { transform: translate(-200%, 200%) scale(0.5); opacity: 0; } }
-        .meteor-shower-item { animation: meteor-rain 1.5s linear infinite; }
-        @keyframes meteor-fall-big { 0% { transform: translate(200%, -200%) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, 50%) scale(1.5); opacity: 0; } }
-        .meteor-big { animation: meteor-fall-big 1s ease-in forwards; }
-        
-        .card-flip { transform-style: preserve-3d; transition: transform 0.8s; }
-        .card-flip.flipped { transform: rotateY(180deg); }
-        .card-face { backface-visibility: hidden; position: absolute; inset: 0; }
-        .card-back { transform: rotateY(180deg); }
-        
-        @keyframes radar-scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .radar-line { animation: radar-scan 2s linear infinite; transform-origin: bottom right; }
-        @keyframes dot-expand { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(50); opacity: 0; } }
-        .dot-expanding { animation: dot-expand 1s ease-out forwards; }
-        @keyframes wheel-rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .wheel-spinning { animation: wheel-rotate 0.2s linear infinite; }
     </style>
 </head>
 <body>
@@ -113,22 +111,28 @@
     <div id="loading-screen">
         <div class="pixel-spinner mb-8"></div>
         <div class="text-yellow-400 text-xl font-bold">系統載入中...</div>
+        <div class="text-white/50 text-xs mt-2">若卡住請檢查 BACKEND_URL 設定</div>
     </div>
 
     <script type="text/babel">
+        // ==========================================
+        //  TODO: 請將下方的網址替換為您在 Render 的後端網址
+        //  格式範例: "https://party-lottery-backend.onrender.com"
+        //  注意：不要有結尾的斜線 /
+        // ==========================================
+        const BACKEND_URL = "https://your-render-app-name.onrender.com"; 
+        // ==========================================
+
         const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
-        // ==========================================
-        //  TODO: 請將下方的 URL 替換為您在 Render 的網址
-        //  例如: "https://party-lottery-1.onrender.com"
-        //  如果不填寫，預設會連線到當前網址 (適合在 Render 測試)
-        // ==========================================
-        const BACKEND_URL = "https://party-lottery-1.onrender.com"; 
-        // ==========================================
-
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
-        const removeLoading = () => { const el = document.getElementById('loading-screen'); if(el) { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 500); }};
+        
+        // 強制移除 Loading (雙重保險)
+        const removeLoading = () => { 
+            const el = document.getElementById('loading-screen'); 
+            if(el) { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 500); }
+        };
 
         class ErrorBoundary extends Component {
             constructor(props) { super(props); this.state = { hasError: false }; }
@@ -149,17 +153,37 @@
             useEffect(() => {
                 if(!roomId || typeof io === 'undefined') return;
                 
-                // 決定連線網址：如果有設定 BACKEND_URL 就用它，否則用當前網址
-                const url = BACKEND_URL || window.location.origin;
-                
-                const socket = io(url, { reconnectionAttempts: 5, timeout: 5000 }); 
+                // 使用設定好的後端網址，如果沒填則退回使用 window.location (適用於非前後端分離)
+                const connectionUrl = BACKEND_URL && BACKEND_URL !== "https://your-render-app-name.onrender.com" ? BACKEND_URL : window.location.origin;
+                console.log("Connecting to:", connectionUrl);
+
+                const socket = io(connectionUrl, { 
+                    reconnectionAttempts: 5, 
+                    timeout: 10000,
+                    transports: ['websocket', 'polling']
+                }); 
                 socketRef.current = socket;
-                socket.on('connect', () => { setStatus('connected'); socket.emit('join_room', roomId); });
+                
+                socket.on('connect', () => { 
+                    setStatus('connected'); 
+                    socket.emit('join_room', roomId); 
+                    removeLoading(); // 連線成功才移除 Loading
+                });
+                
                 socket.on('disconnect', () => setStatus('disconnected'));
+                
+                socket.on('connect_error', (err) => {
+                    console.error("Socket Error:", err);
+                    setStatus('error');
+                    // 如果連線失敗也移除 Loading 讓用戶看到錯誤狀態
+                    removeLoading();
+                });
+                
                 socket.on('player_list_update', (d) => onEvent && onEvent('player_list_update', d));
                 socket.on('game_status_update', (d) => onEvent && onEvent('game_status_update', d));
                 socket.on('init_data', (d) => onEvent && onEvent('init_data', d));
                 socket.on('game_reset', (d) => onEvent && onEvent('game_reset', d));
+                
                 return () => socket.disconnect();
             }, [roomId]);
             const emit = (e, d) => { if(socketRef.current) socketRef.current.emit(e, { roomId, ...d }); };
@@ -176,9 +200,16 @@
             const [cardFlipped, setCardFlipped] = useState(false);
             const [marioState, setMarioState] = useState('running'); 
             const [shooterState, setShooterState] = useState('idle');
-            const [wheelStop, setWheelStop] = useState(false);
-            const [radarDot, setRadarDot] = useState(false);
 
+            const getDisplayName = (player) => {
+                const index = candidates.findIndex(p => p.id === player.id) + 1;
+                return `No.${index}`;
+            };
+            const getDisplayString = (player) => {
+                const index = candidates.findIndex(p => p.id === player.id) + 1;
+                return `${getDisplayName(player)} - ${player.name}`;
+            };
+            
             useEffect(() => {
                 let interval;
                 if (isRolling) {
@@ -188,49 +219,51 @@
                     setMarioState('running');
                     setShooterState('moving');
                     setImpact(false);
-                    setWheelStop(false);
-                    setRadarDot(false);
 
                     if (mode === 'race') {
-                        const racers = candidates.slice(0, 5).map((p, idx) => ({...p, progress: 0}));
-                        while(racers.length < 5) racers.push({name:'NPC', avatar:'🐎', progress:0});
+                        const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: getDisplayName(p), progress: 0}));
+                        while(racers.length < 5) racers.push({name:'CPU', displayName:`NPC`, avatar:'🐎', progress:0});
                         setHorses(racers);
                         interval = setInterval(() => {
                             setHorses(prev => prev.map(h => ({...h, progress: Math.min(88, h.progress + Math.random() * 2)})));
                         }, 100);
-                    } else if (mode !== 'slots' && mode !== 'claw' && mode !== 'retro' && mode !== 'magic') {
+                    } else if (mode === 'slots') {
+                         // Slots
+                    } else if (mode === 'adventure') {
+                         setMarioState('running');
+                    } else if (mode === 'shooter') {
+                         setShooterState('moving');
+                    } else {
                         interval = setInterval(() => {
-                            const randomPlayer = candidates[Math.floor(Math.random() * candidates.length)];
-                            setDisplay(randomPlayer ? randomPlayer.name : "...");
-                        }, 100);
+                            const randomIdx = Math.floor(Math.random() * candidates.length);
+                            setDisplay(`No.${randomIdx + 1}`);
+                        }, 80);
                     }
                 } else if (targetName) {
                     setDisplay(targetName);
                     
                     if (mode === 'race' && winnerObj) { setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 95} : h)); }
                     if (mode === 'slots') {
-                        setTimeout(() => setSlotStops([true, false, false]), 500);
-                        setTimeout(() => setSlotStops([true, true, false]), 1200);
-                        setTimeout(() => setSlotStops([true, true, true]), 2000);
+                        setTimeout(() => setSlotStops([true, false, false]), 100);
+                        setTimeout(() => setSlotStops([true, true, false]), 600);
+                        setTimeout(() => setSlotStops([true, true, true]), 1200);
                     }
                     if (mode === 'claw') setClawState('dropping');
                     if (mode === 'meteor') setImpact(true);
                     if (mode === 'magic') setTimeout(() => setCardFlipped(true), 500);
                     if (mode === 'adventure') setMarioState('jump');
                     if (mode === 'shooter') setShooterState('hit');
-                    if (mode === 'retro') setWheelStop(true);
-                    if (mode === 'radar') setTimeout(() => setRadarDot(true), 800);
                 }
                 return () => clearInterval(interval);
             }, [isRolling, targetName, mode, winnerObj, candidates]);
 
-            // --- 渲染 ---
+            // 1. 賽馬
             if (mode === 'race') return (
                 <div className="w-full max-w-5xl flex flex-col gap-3 relative p-6 bg-black/40 border-4 border-white pixel-box theme-race">
                     <div className="absolute right-10 top-0 bottom-0 w-2 bg-yellow-400 z-10 opacity-70 border-r-4 border-dashed border-black"></div>
                     {horses.map((h, i) => (
                         <div key={i} className="flex items-center gap-2 relative border-b-2 border-white/20 pb-1 h-16">
-                            <div className="w-24 text-right text-lg font-bold text-white bg-black px-1 truncate">{h.name}</div>
+                            <div className="w-24 text-right text-lg font-bold text-white bg-black px-1 truncate">{h.displayName}</div>
                             <div className="flex-1 relative h-full">
                                 <div className="absolute top-1/2 -translate-y-1/2 text-4xl transition-all duration-300 ease-linear transform -translate-x-full horse-sprite" style={{left: `${h.progress}%`}}>{h.avatar}</div>
                             </div>
@@ -239,6 +272,7 @@
                 </div>
             );
 
+            // 2. 夾娃娃
             if (mode === 'claw') return (
                 <div className="relative w-[400px] h-[500px] border-8 border-pink-500 bg-black/60 mx-auto pixel-box-dark overflow-hidden theme-festival">
                     <div className={`absolute w-2 bg-gray-400 h-10 top-0 left-1/2 -translate-x-1/2 ${clawState==='moving'?'claw-arm-moving':''} ${clawState==='dropping'?'claw-arm-dropping':''}`} style={{zIndex:20}}>
@@ -247,18 +281,25 @@
                     <div className="absolute bottom-0 w-full h-1/2 flex flex-wrap content-end justify-center p-4 gap-2 opacity-80">
                         {candidates.slice(0, 15).map((c,i) => <div key={i} className="text-4xl animate-bounce" style={{animationDelay:`${i*0.1}s`}}>{c.avatar}</div>)}
                     </div>
+                    {!isRolling && targetName && clawState === 'dropping' && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 text-center animate__animated animate__zoomIn" style={{animationDelay:'1.5s'}}>
+                            <div className="text-8xl mb-2">{winnerObj?.avatar}</div>
+                            <div className="bg-white text-pink-600 px-4 py-2 text-xl border-4 border-pink-500 font-bold">{getDisplayString(winnerObj)}</div>
+                        </div>
+                    )}
                 </div>
             );
 
+            // 3. 拉霸
             if (mode === 'slots') {
-                const strip = [...candidates, ...candidates].slice(0, 40);
+                const strip = [...candidates, ...candidates, ...candidates].slice(0, 40);
                 return (
                     <div className="flex justify-center gap-6 bg-yellow-600 p-8 rounded-[2rem] border-8 border-yellow-800 pixel-box shadow-2xl theme-casino">
                         {[0, 1, 2].map(col => (
                             <div key={col} className="bg-white h-56 w-32 rounded border-4 border-black relative overflow-hidden">
                                 <div className={`w-full ${!slotStops[col] ? 'reel-rolling' : ''}`} style={{ transform: slotStops[col] ? 'translateY(0)' : undefined }}> 
-                                    {!slotStops[col] ? <div className="reel-track reel-content">{strip.map((c, i) => <div key={i} className="h-56 flex flex-col items-center justify-center border-b-2 border-gray-200"><div className="text-6xl">{c.avatar}</div></div>)}</div> : 
-                                    <div className="h-56 flex flex-col items-center justify-center animate__animated animate__bounceIn"><div className="text-7xl mb-2">{winnerObj?.avatar || '💎'}</div><div className="text-xl font-bold text-red-600 mt-2 truncate w-full text-center px-1">{winnerObj?.name}</div></div>}
+                                    {!slotStops[col] ? <div className="reel-track reel-content">{strip.map((c, i) => <div key={i} className="h-56 flex flex-col items-center justify-center border-b-2 border-gray-200"><div className="text-6xl">{c.avatar}</div><div className="text-xs font-bold text-gray-500">{getDisplayName(c)}</div></div>)}</div> : 
+                                    <div className="h-56 flex flex-col items-center justify-center animate__animated animate__bounceIn"><div className="text-7xl mb-2">{winnerObj?.avatar || '💎'}</div><div className="text-xl font-bold text-red-600 mt-2 truncate w-full text-center px-1">{getDisplayString(winnerObj)}</div></div>}
                                 </div>
                             </div>
                         ))}
@@ -266,48 +307,50 @@
                 );
             }
             
+            // 4. 流星
             if (mode === 'meteor') return (
                 <div className={`relative w-full h-full flex flex-col items-center justify-center overflow-visible theme-space`}>
-                    {isRolling && <div className="absolute inset-0 pointer-events-none">
-                         {[1,2,3,4,5].map(i => <div key={i} className="absolute text-4xl meteor-shower-item" style={{left: `${Math.random()*100}%`, top: '-50px', animationDelay: `${Math.random()}s`}}>🌠</div>)}
-                         <div className="absolute bottom-10 w-full text-center text-yellow-400 text-3xl animate-pulse tracking-widest">✨ 許願中... ✨</div>
-                    </div>}
+                    {isRolling && <div className="text-yellow-400 text-3xl animate-pulse tracking-widest">✨ 許願中... ✨</div>}
                     {!isRolling && targetName && (
                         <div className="z-20 text-center relative w-full h-full flex flex-col items-center justify-center">
-                             <div className="absolute top-0 right-0 text-[150px] meteor-big" style={{display: impact ? 'none' : 'block'}}☄️</div>
+                             <div className="absolute top-0 right-0 text-[150px] meteor-big" style={{display: impact ? 'none' : 'block'}}>☄️</div>
                              <div className={`transition-all duration-100 ${impact ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}>
                                  <div className="text-9xl mb-4">💥</div>
+                                 <div className="pixel-box p-6 text-5xl text-black font-bold animate__animated animate__zoomIn">{getDisplayString(winnerObj)}</div>
                              </div>
                         </div>
                     )}
                 </div>
             );
 
+            // 5. 轉盤
             if (mode === 'retro') return (
                 <div className="relative flex items-center justify-center theme-casino">
                     <div className="absolute top-[-50px] text-8xl z-20 text-white drop-shadow-xl">⬇</div>
                     <div className={`w-[500px] h-[500px] rounded-full border-[16px] border-yellow-500 bg-red-800 flex items-center justify-center shadow-2xl overflow-hidden relative ${isRolling ? 'wheel-spinning' : ''}`} style={{animationDuration: isRolling ? '0.2s' : '0s'}}>
                          <div className="absolute inset-0 bg-[conic-gradient(from_0deg,#ff0000_0deg_36deg,#ffffff_36deg_72deg,#ff0000_72deg_108deg,#ffffff_108deg_144deg,#ff0000_144deg_180deg,#ffffff_180deg_216deg,#ff0000_216deg_252deg,#ffffff_252deg_288deg,#ff0000_288deg_324deg,#ffffff_324deg_360deg)] opacity-30"></div>
-                         <div className={`w-56 h-56 bg-white rounded-full flex flex-col items-center justify-center z-10 border-8 border-gray-200 shadow-xl ${!isRolling && wheelStop ? 'animate__animated animate__rubberBand' : ''}`}>
-                             {!isRolling && targetName && wheelStop ? <div className="text-center"><div className="text-6xl mb-2">{winnerObj?.avatar}</div><div className="text-2xl font-bold text-red-600">{winnerObj.name}</div></div> : <div className="text-4xl font-black text-gray-500">SPIN</div>}
+                         <div className={`w-56 h-56 bg-white rounded-full flex flex-col items-center justify-center z-10 border-8 border-gray-200 shadow-xl ${!isRolling ? 'animate__animated animate__rubberBand' : ''}`}>
+                             {!isRolling && targetName ? <div className="text-center"><div className="text-6xl mb-2">{winnerObj?.avatar}</div><div className="text-2xl font-bold text-red-600">{getDisplayString(winnerObj)}</div></div> : <div className="text-4xl font-black text-gray-500">SPIN</div>}
                          </div>
                     </div>
                 </div>
             );
 
+            // 6. 塔羅
             if (mode === 'magic') return (
                 <div className="flex items-center justify-center h-full theme-magic">
                      <div className="flex gap-4">
                         <div className={`relative w-80 h-[500px] card-flip-container`}>
                             <div className={`w-full h-full card-inner ${cardFlipped ? 'flipped' : ''}`}>
                                 <div className="card-front absolute inset-0 bg-purple-900 rounded-3xl border-4 border-yellow-400 flex items-center justify-center shadow-2xl backface-hidden"><div className="text-9xl opacity-50 animate-pulse">🔮</div></div>
-                                <div className="card-back absolute inset-0 bg-white rounded-3xl border-8 border-purple-600 flex flex-col items-center justify-center shadow-2xl backface-hidden"><div className="text-9xl mb-8">{winnerObj?.avatar}</div><div className="text-5xl font-bold text-purple-900">{winnerObj?.name}</div></div>
+                                <div className="card-back absolute inset-0 bg-white rounded-3xl border-8 border-purple-600 flex flex-col items-center justify-center shadow-2xl backface-hidden"><div className="text-9xl mb-8">{winnerObj?.avatar}</div><div className="text-5xl font-bold text-purple-900">{getDisplayString(winnerObj)}</div></div>
                             </div>
                         </div>
                      </div>
                 </div>
             );
 
+            // 7. 冒險島
             if (mode === 'adventure') return (
                 <div className="w-full h-full relative overflow-hidden flex flex-col justify-end pb-10 theme-mario">
                      <div className="absolute top-[30%] left-1/2 -translate-x-1/2 flex gap-1 z-20">
@@ -317,9 +360,11 @@
                      <div className={`absolute bottom-24 left-1/2 -translate-x-1/2 transition-all duration-300 ${marioState==='jump'?'mario-jump-anim':''}`}>
                          <div className={`text-9xl ${isRolling ? 'mario-running' : ''}`}>{isRolling ? '🏃' : (winnerObj?.avatar || '🕴️')}</div>
                      </div>
+                     {!isRolling && targetName && <div className="absolute top-[10%] left-1/2 -translate-x-1/2 pixel-box px-8 py-4 text-3xl font-bold animate__animated animate__bounceInUp text-black">{getDisplayString(winnerObj)}</div>}
                 </div>
             );
 
+            // 8. 射擊
             if (mode === 'shooter') return (
                 <div className="w-full h-full bg-black relative overflow-hidden flex flex-col items-center justify-center theme-space">
                      <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 text-8xl ${isRolling?'ship-moving':''}`}>🚀</div>
@@ -328,6 +373,7 @@
                          {!isRolling && shooterState === 'hit' ? (
                              <div className="animate__animated animate__zoomIn">
                                  <div className="text-9xl mb-4">💥</div>
+                                 <div className="pixel-box px-6 py-4 text-4xl text-black font-bold">{getDisplayString(winnerObj)}</div>
                              </div>
                          ) : (
                              <div className="text-8xl animate-bounce">👾</div>
@@ -336,19 +382,25 @@
                 </div>
             );
 
-            // Radar
-            if (mode === 'radar') return (
-                <div className="w-[600px] h-[600px] rounded-full border-4 border-green-500 bg-black/90 relative flex items-center justify-center overflow-hidden mx-auto">
-                    <div className={`absolute top-0 left-0 w-full h-full border-b-2 border-green-500 origin-center ${isRolling ? 'animate-spin' : ''}`} style={{background: 'linear-gradient(to bottom, transparent 50%, rgba(34,197,94,0.2) 50%)'}}></div>
-                    {!isRolling && targetName && radarDot && (
-                        <div className="z-10 text-center animate__animated animate__zoomIn">
-                            <div className="w-8 h-8 bg-red-600 rounded-full mx-auto mb-4 animate-ping"></div>
-                        </div>
-                    )}
+            // 9. 迷宮
+            if (mode === 'maze') return (
+                 <div className="flex flex-col items-center justify-center text-center w-full h-full theme-maze">
+                    <div className="pixel-box p-8 bg-black border-4 border-blue-600">
+                        <div className={`text-4xl md:text-6xl transition-all ${isRolling ? 'opacity-70 scale-95' : 'opacity-100 scale-110 text-yellow-300'}`}>{display}</div>
+                    </div>
+                    {isRolling && <div className="text-blue-400 mt-8 text-xl tracking-[0.5em] animate-pulse">SEARCHING PATH...</div>}
                 </div>
             );
 
-            return null;
+            // 10. 預設 (通用)
+            return (
+                <div className="flex flex-col items-center justify-center text-center w-full h-full theme-cyber">
+                    <div className="pixel-box p-8 bg-black border-4 border-green-600">
+                        <div className={`text-4xl md:text-6xl transition-all ${isRolling ? 'opacity-70 scale-95' : 'opacity-100 scale-110 text-yellow-300'}`}>{display}</div>
+                    </div>
+                    {isRolling && <div className="text-cyan-400 mt-8 text-xl tracking-[0.5em] animate-pulse">PROCESSING DATA...</div>}
+                </div>
+            );
         };
 
         // --- 1. Index Page ---
@@ -367,7 +419,8 @@
                 let rid = new URLSearchParams(window.location.search).get('room');
                 if(!rid) rid = Math.floor(1000 + Math.random() * 9000).toString();
                 setRoomId(rid);
-                const url = `${window.location.href.split('?')[0]}?mode=player&room=${rid}`;
+                const baseUrl = window.location.href.split('?')[0];
+                const url = `${baseUrl}?mode=player&room=${rid}`;
                 if(typeof QRCode !== 'undefined') QRCode.toDataURL(url, { width: 300, margin: 2, color: { dark: '#000000', light: '#ffffff' } }, (e, u) => !e && setQrUrl(u));
             }, []);
 
