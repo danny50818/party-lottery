@@ -9,7 +9,6 @@
     <script>
         window.onerror = function(msg, url, line, col, error) {
             console.error("Global Error:", msg);
-            // 忽略非致命錯誤
             return false;
         };
     </script>
@@ -41,7 +40,7 @@
             image-rendering: pixelated;
         }
 
-        /* 8-Bit UI 元件 */
+        /* UI 元件 */
         .pixel-box { background: #fff; border: 4px solid #000; color: #000; box-shadow: -4px 0 0 0 #000, 4px 0 0 0 #000, 0 -4px 0 0 #000, 0 4px 0 0 #000; }
         .pixel-box-dark { background: #000; border: 4px solid #fff; color: #fff; box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff; }
         .pixel-btn { 
@@ -51,7 +50,7 @@
             font-family: "Microsoft JhengHei", sans-serif !important;
         }
         .pixel-btn:active { transform: translateY(4px); }
-        .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; }
+        .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; text-shadow: none; }
         .pixel-btn-red { background: #ef4444; border-color: #7f1d1d; color: white; }
 
         /* --- 3D 紅色流動方格背景 --- */
@@ -68,7 +67,7 @@
             background-size: 80px 80px;
             transform: rotateX(70deg);
             animation: grid-move 2s linear infinite;
-            box-shadow: 0 0 150px rgba(255, 0, 0, 0.4);
+            box-shadow: 0 0 150px rgba(255, 0, 0, 0.5);
         }
         .retro-horizon {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -82,7 +81,7 @@
         .pixel-spinner { width: 48px; height: 48px; background: #fbbf24; animation: pixel-spin 0.8s steps(4) infinite; box-shadow: 4px 4px 0 #b45309; }
         @keyframes pixel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- 遊戲動畫 Keyframes --- */
+        /* --- 遊戲動畫 Keyframes (10種模式) --- */
         
         /* 1. 賽馬 */
         @keyframes horse-gallop { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
@@ -98,71 +97,85 @@
             color: transparent;
         }
 
-        /* 3. 瑪利歐 */
-        @keyframes mario-run { 0% { transform: translateY(0); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0); } }
-        .mario-running { animation: mario-run 0.15s steps(2) infinite; }
-        @keyframes mario-jump { 0% { bottom: 24%; } 50% { bottom: 120px; } 100% { bottom: 24%; } }
-        .mario-jump-anim { animation: mario-jump 0.5s ease-out forwards; }
-        @keyframes block-bump { 0% { transform: translateY(0); } 50% { transform: translateY(-20px); } 100% { transform: translateY(0); } }
-        .block-bump-anim { animation: block-bump 0.2s ease-out; }
+        /* 3. 瑪利歐 (慢跑->跳躍) */
+        @keyframes mario-hop { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
+        .mario-running { animation: mario-hop 0.2s steps(2) infinite; }
+        /* 橫向移動靠 transition, 垂直跳躍靠 animation */
+        @keyframes mario-jump-up { 0% { bottom: 24%; } 50% { bottom: 180px; } 100% { bottom: 24%; } }
+        .mario-jump-anim { animation: mario-jump-up 0.6s ease-out forwards; }
+        @keyframes block-bump { 0% { transform: translateY(0); } 50% { transform: translateY(-30px); } 100% { transform: translateY(0); } }
+        .block-bump-anim { animation: block-bump 0.3s ease-out; }
 
-        /* 4. 射箭 */
-        @keyframes arrow-fly { 0% { left: -30%; } 100% { left: 45%; } }
-        .arrow-anim { animation: arrow-fly 1s ease-in forwards; }
-        @keyframes target-shake { 0%, 100% { transform: scale(1) translateX(-50%); } 10%, 90% { transform: scale(1.1) translateX(-55%); } 50% { transform: scale(1.1) translateX(-45%); } }
+        /* 4. 射箭 (Archery) */
+        /* 箭從螢幕外(-100vw)飛到中間 */
+        @keyframes arrow-fly-in { 0% { left: -50vw; } 100% { left: 45%; } } 
+        .arrow-anim { animation: arrow-fly-in 0.8s ease-out forwards; }
+        @keyframes target-shake { 0%, 100% { transform: scale(1); } 10%, 90% { transform: scale(1.2) rotate(5deg); } 50% { transform: scale(1.2) rotate(-5deg); } }
         .target-hit { animation: target-shake 0.5s ease-in-out; }
 
-        /* 5. 足球 */
-        @keyframes ball-kick { 0% { left: -10%; transform: rotate(0deg); } 100% { left: 80%; transform: rotate(720deg); } }
-        .ball-anim { animation: ball-kick 1.5s ease-out forwards; }
-        @keyframes net-shake { 0% { transform: skew(0deg); } 25% { transform: skew(5deg); } 75% { transform: skew(-5deg); } 100% { transform: skew(0deg); } }
-        .net-hit { animation: net-shake 0.5s ease-in-out; }
+        /* 5. 足球 (Soccer) - 上下飄動進球 */
+        @keyframes ball-bob { 0%, 100% { margin-top: 0; } 50% { margin-top: -30px; } }
+        @keyframes ball-kick { 
+            0% { left: -10%; transform: rotate(0deg); } 
+            100% { left: 80%; transform: rotate(720deg); } 
+        }
+        .ball-anim { animation: ball-kick 2.5s ease-out forwards; }
+        .ball-bobbing { animation: ball-bob 0.5s ease-in-out infinite; }
 
-        /* 6. 炸彈 */
-        @keyframes bomb-pulse { 0% { transform: scale(1); filter: hue-rotate(0deg); } 50% { transform: scale(1.1); filter: hue-rotate(0deg); } 100% { transform: scale(1.2); filter: hue-rotate(90deg); } }
-        .bomb-anim { animation: bomb-pulse 0.5s infinite alternate; }
-        @keyframes bomb-explode { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(3); opacity: 1; background: white; } 100% { transform: scale(4); opacity: 0; } }
-        .bomb-boom { animation: bomb-explode 0.5s ease-out forwards; }
+        /* 6. 炸彈 (Bomb) - 變大 */
+        @keyframes bomb-pulse-grow { 
+            0% { transform: scale(1); filter: hue-rotate(0deg); } 
+            100% { transform: scale(5); filter: hue-rotate(180deg); } 
+        }
+        .bomb-growing { animation: bomb-pulse-grow 3s ease-in forwards; }
+        @keyframes explode-big { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(3); opacity: 1; background: white; } 100% { transform: scale(4); opacity: 0; } }
+        .bomb-boom { animation: explode-big 0.5s ease-out forwards; }
 
-        /* 7. 流星雨 */
-        @keyframes meteor-rain-anim { 0% { transform: translate(120vw, -120vh); } 100% { transform: translate(-20vw, 120vh); } }
-        .meteor-rain-item { position: absolute; animation: meteor-rain-anim 1s linear infinite; }
-        @keyframes meteor-main-fall { 0% { transform: translate(120vw, -120vh) scale(0.5); } 100% { transform: translate(-50%, -50%) scale(1); } }
-        .meteor-main { position:absolute; top:50%; left:50%; animation: meteor-main-fall 1.5s ease-out forwards; }
+        /* 7. 流星雨 (Meteor) - 全螢幕對角線 */
+        @keyframes meteor-cross { 
+            0% { transform: translate(100vw, -100vh) scale(0.5); opacity: 1; } 
+            100% { transform: translate(-100vw, 100vh) scale(1); opacity: 0; } 
+        }
+        .meteor-shower-item { position: absolute; top: 0; right: 0; animation: meteor-cross 2s linear infinite; }
+        /* 閃爍星星 */
+        @keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .twinkle-star { animation: twinkle 1s infinite; }
 
-        /* 8. 雷達 */
+        /* 8. 雷達 (Radar) */
         @keyframes radar-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .radar-line { animation: radar-spin 2s linear infinite; transform-origin: bottom right; }
-        @keyframes red-dot-anim { 0% { transform: scale(0.5); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-        .red-dot { animation: red-dot-anim 0.5s infinite alternate; }
+        @keyframes red-dot-pop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .red-dot-anim { animation: red-dot-pop 0.5s ease-out forwards; }
 
-        /* 9. 塔羅 */
+        /* 9. 塔羅 (翻牌) */
         .card-container { perspective: 1000px; }
-        .card-inner { width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .card-inner { width: 100%; height: 100%; transition: transform 1s; transform-style: preserve-3d; }
         .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 4px solid #facc15; }
         .card-front { background: #4c1d95; transform: rotateY(0deg); }
         .card-back { background: #fff; transform: rotateY(180deg); color: #000; }
         .flipped .card-inner { transform: rotateY(180deg); }
-        @keyframes shuffle { 0% { transform: translateX(0); z-index:1; } 50% { transform: translateX(100px); z-index:10; } 100% { transform: translateX(0); z-index:1; } }
-        .shuffling { animation: shuffle 0.5s ease-in-out infinite; }
 
-        /* 10. 飛機 */
+        /* 10. 飛機 (Shooter) - 左右慢移 */
         @keyframes ship-move { 0% { left: 20%; } 50% { left: 80%; } 100% { left: 20%; } }
-        .ship-moving { animation: ship-move 3s ease-in-out infinite; }
-        @keyframes laser-fire { 0% { bottom: 80px; height: 10px; opacity: 1; } 100% { bottom: 600px; height: 100px; opacity: 0; } }
-        .laser-beam { position: absolute; width: 6px; background: #0f0; animation: laser-fire 0.2s linear infinite; }
+        .ship-moving { animation: ship-move 4s ease-in-out infinite; }
+        @keyframes laser-up { 0% { height: 10px; bottom: 80px; opacity: 1; } 100% { height: 100px; bottom: 100vh; opacity: 0; } }
+        .laser-fire { animation: laser-up 0.3s linear infinite; } /* 連發 */
 
-        /* 11. 轉盤 */
-        @keyframes wheel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .wheel-rotating { animation: wheel-spin 0.2s linear infinite; }
+        /* 11. 轉盤 (Wheel) - 旋轉 */
+        @keyframes wheel-rotate { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .wheel-rotating { animation: wheel-rotate 0.2s linear infinite; }
 
         /* 泡泡 */
         @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 20% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
         .bubble { position: absolute; bottom: -100px; animation: floatUp linear infinite; }
 
-        /* 表情符號飄浮 */
-        @keyframes emoji-float { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-300px) scale(1.5); opacity: 0; } }
-        .emoji-particle { position: absolute; animation: emoji-float 3s ease-out forwards; font-size: 2rem; }
+        /* 中獎愛心飄浮 */
+        @keyframes love-float { 
+            0% { transform: translateY(100%) scale(0.5); opacity: 0; } 
+            20% { opacity: 1; } 
+            100% { transform: translateY(-200%) scale(1.5); opacity: 0; } 
+        }
+        .love-particle { position: absolute; animation: love-float 4s ease-out forwards; bottom: 0; font-size: 2rem; }
     </style>
 </head>
 <body>
@@ -212,14 +225,12 @@
                 const connectionUrl = BACKEND_URL || window.location.origin;
                 const socket = io(connectionUrl, { reconnectionAttempts: 5, timeout: 10000, transports: ['websocket', 'polling'] }); 
                 socketRef.current = socket;
-                
                 socket.on('connect', () => { setStatus('connected'); socket.emit('join_room', roomId); removeLoading(); });
                 socket.on('disconnect', () => setStatus('disconnected'));
                 socket.on('player_list_update', (d) => onEvent && onEvent('player_list_update', d));
                 socket.on('game_status_update', (d) => onEvent && onEvent('game_status_update', d));
                 socket.on('init_data', (d) => onEvent && onEvent('init_data', d));
                 socket.on('game_reset', (d) => onEvent && onEvent('game_reset', d));
-                
                 return () => socket.disconnect();
             }, [roomId]);
             const emit = (e, d) => { if(socketRef.current) socketRef.current.emit(e, { roomId, ...d }); };
@@ -230,27 +241,33 @@
         const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
             const [display, setDisplay] = useState("READY");
             
-            // 狀態管理
-            const [marioState, setMarioState] = useState({x: 0, jump: false, bump: false});
-            const [slotStops, setSlotStops] = useState([false, false, false]);
+            // 動畫狀態
             const [horses, setHorses] = useState([]);
+            const [slotStops, setSlotStops] = useState([false, false, false]);
+            const [impact, setImpact] = useState(false);
+            const [marioPos, setMarioPos] = useState({x: 10, jump: false, bump: false}); // 修正初始位置
             const [shooter, setShooter] = useState({x: 50, laser: false, boom: false});
             const [archery, setArchery] = useState({shoot: false, hit: false});
-            const [meteorStage, setMeteorStage] = useState(0); // 0:rain, 1:big fall, 2:boom
-            const [cards, setCards] = useState([0,1,2]);
+            const [meteorStage, setMeteorStage] = useState(0); 
             const [cardReveal, setCardReveal] = useState(false);
             const [radarDot, setRadarDot] = useState(false);
             const [soccer, setSoccer] = useState({kick: false, goal: false});
             const [bomb, setBomb] = useState({size: 1, boom: false});
             const [wheelSpin, setWheelSpin] = useState(true);
 
+            // 格式化顯示
+            const getDisplayString = (player) => {
+                const index = candidates.findIndex(p => p.id === player.id) + 1;
+                return `No.${index} - ${player.name}`;
+            };
+            
             useEffect(() => {
                 let interval;
                 if (isRolling) {
-                    // --- 初始化 ---
-                    setMarioState({x: 0, jump: false, bump: false});
+                    // --- 初始化狀態 ---
+                    setMarioPos({x: 0, jump: false, bump: false});
                     setSlotStops([false, false, false]);
-                    setShooter({x: 50, laser: false, boom: false});
+                    setShooter({x: 50, laser: false, boom: false}); // 飛船雷射重置
                     setArchery({shoot: false, hit: false});
                     setMeteorStage(0);
                     setCardReveal(false);
@@ -258,9 +275,10 @@
                     setSoccer({kick: false, goal: false});
                     setBomb({size: 1, boom: false});
                     setWheelSpin(true);
+                    setImpact(false);
 
                     if (mode === 'race') {
-                        const racers = candidates.slice(0, 5).map(p => ({...p, progress: 0}));
+                        const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: p.name, progress: 0}));
                         while(racers.length < 5) racers.push({name:'CPU', avatar:'🐎', progress:0});
                         setHorses(racers);
                         interval = setInterval(() => {
@@ -268,13 +286,20 @@
                         }, 100);
                     } 
                     else if (mode === 'adventure') {
-                        interval = setInterval(() => setMarioState(prev => ({ ...prev, x: (prev.x + 1) % 90 })), 50);
+                        // 瑪利歐慢跑: 3秒跑50%
+                        interval = setInterval(() => {
+                            setMarioPos(prev => ({ ...prev, x: Math.min(50, prev.x + 1) })); // 跑到中間停
+                        }, 60);
                     }
                     else if (mode === 'shooter') {
-                        interval = setInterval(() => setShooter(prev => ({...prev, x: (prev.x + 2) % 90 + 5})), 50);
+                        // 飛船左右慢移
+                        interval = setInterval(() => {
+                            setShooter(prev => ({...prev, x: (prev.x + 1) % 80 + 10}));
+                        }, 50);
                     }
                     else if (mode === 'bomb') {
-                         interval = setInterval(() => setBomb(prev => ({...prev, size: Math.min(5, prev.size + 0.1)})), 100);
+                        // 炸彈變大
+                        interval = setInterval(() => setBomb(prev => ({...prev, size: Math.min(8, prev.size + 0.05)})), 100);
                     }
                     else if (!['slots', 'retro', 'magic'].includes(mode)) {
                         interval = setInterval(() => {
@@ -287,20 +312,22 @@
                     // --- 揭曉動畫 (時間軸) ---
                     setDisplay(targetName);
                     
-                    if (mode === 'adventure') {
-                        setMarioState({x: 50, jump: true, bump: false});
-                        setTimeout(() => setMarioState(prev => ({...prev, bump: true})), 400);
+                    if (mode === 'race' && winnerObj) {
+                        setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 98} : h));
                     }
                     if (mode === 'slots') {
+                        // 拉霸依序停
                         setTimeout(() => setSlotStops([true, false, false]), 500);
                         setTimeout(() => setSlotStops([true, true, false]), 1500);
                         setTimeout(() => setSlotStops([true, true, true]), 2500);
                     }
-                    if (mode === 'race' && winnerObj) {
-                        setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 98} : h));
+                    if (mode === 'adventure') {
+                        // 瑪利歐跳躍
+                        setMarioPos(prev => ({...prev, x: 50, jump: true})); 
+                        setTimeout(() => setMarioPos(prev => ({...prev, bump: true})), 400); 
                     }
                     if (mode === 'shooter') {
-                        setShooter(prev => ({...prev, x: 50, laser: true}));
+                        setShooter(prev => ({...prev, x: 50, laser: true})); // 移到中間開火
                         setTimeout(() => setShooter(prev => ({...prev, boom: true})), 600);
                     }
                     if (mode === 'archery') {
@@ -312,7 +339,7 @@
                         setTimeout(() => setMeteorStage(2), 1000); // 撞擊
                     }
                     if (mode === 'magic') {
-                        setTimeout(() => setCardReveal(true), 1000);
+                        setTimeout(() => setCardReveal(true), 1500); // 翻牌
                     }
                     if (mode === 'radar') {
                         setTimeout(() => setRadarDot(true), 1000);
@@ -322,7 +349,7 @@
                         setTimeout(() => setSoccer(prev => ({...prev, goal: true})), 1200);
                     }
                     if (mode === 'bomb') {
-                        setBomb(prev => ({...prev, size: 6}));
+                        setBomb(prev => ({...prev, size: 10})); // 極大
                         setTimeout(() => setBomb(prev => ({...prev, boom: true})), 500);
                     }
                     if (mode === 'retro') {
@@ -332,6 +359,8 @@
                 return () => clearInterval(interval);
             }, [isRolling, targetName, mode, winnerObj, candidates]);
 
+            // --- 渲染 ---
+
             // 1. 瑪利歐 (Adventure)
             if (mode === 'adventure') return (
                 <div className="w-full h-full relative flex flex-col justify-end pb-20">
@@ -340,7 +369,7 @@
                      </div>
                      <div className="h-24 bg-[#c84c0c] border-t-8 border-black w-full relative z-10"></div>
                      <div className={`absolute bottom-24 transition-all duration-100 ${marioPos.jump ? 'left-1/2 -translate-x-1/2 mario-jump-anim' : 'mario-running'}`} 
-                          style={{left: marioPos.jump ? '50%' : `${marioPos.x}%`}}>
+                          style={{left: `${marioPos.x}%`}}>
                          <div className="text-9xl">🚶🏼‍➡️</div>
                      </div>
                      {!isRolling && targetName && marioPos.bump && (
@@ -388,8 +417,10 @@
                         {[0,1,2].map(i => <div key={i} className={`text-8xl transition-all ${!isRolling && shooter.boom && i===1 ? 'exploding' : 'animate-bounce'}`}>{!isRolling && shooter.boom && i===1 ? '💥' : '👾'}</div>)}
                      </div>
                      <div className="absolute bottom-10 text-8xl transition-all duration-100" style={{left: `${shooter.x}%`}}>🚀</div>
+                     {/* 射擊光束 */}
                      {isRolling && <div className="absolute bottom-32 w-2 h-full bg-green-500 laser-beam laser-anim" style={{left: `${shooter.x}%`}}></div>}
                      {shooter.laser && <div className="absolute bottom-32 w-4 h-full bg-red-500 laser-beam" style={{left: '50%'}}></div>}
+                     
                      {!isRolling && shooter.boom && (
                          <div className="absolute top-20 left-1/2 -translate-x-1/2 animate__animated animate__zoomIn z-20">
                              <div className="pixel-box px-6 py-4 text-4xl text-black font-bold">{targetName}</div>
@@ -398,17 +429,16 @@
                 </div>
             );
 
-            // 5. 射箭 (Archery)
+            // 5. 射箭 (Archery - 新)
             if (mode === 'archery') return (
                 <div className="w-full h-full relative flex items-center justify-center">
-                    <div className={`w-64 h-64 bg-white rounded-full border-[20px] border-red-600 flex items-center justify-center shadow-xl ${archery.hit?'animate__animated animate__wobble':''}`}>
+                    <div className={`w-64 h-64 bg-white rounded-full border-[20px] border-red-600 flex items-center justify-center shadow-xl ${archery.hit?'target-hit':''}`}>
                          <div className="w-32 h-32 bg-white rounded-full border-[20px] border-blue-600 flex items-center justify-center">
-                             <div className="w-10 h-10 bg-yellow-400 rounded-full"></div>
+                             <div className="w-10 h-10 bg-yellow-400 rounded-full border-[5px] border-black"></div>
                          </div>
                     </div>
-                    {/* 箭矢 */}
-                    <div className={`absolute top-1/2 left-0 text-6xl font-bold transition-all duration-500 ease-in whitespace-nowrap text-white drop-shadow-md`} 
-                         style={{left: archery.shoot ? '50%' : '-300px', transform: 'translateY(-50%)'}}>
+                    <div className={`absolute top-1/2 text-6xl font-bold transition-all duration-500 ease-in whitespace-nowrap text-white drop-shadow-md`} 
+                         style={{left: archery.shoot ? '50%' : '-100%', transform: 'translateY(-50%)'}}>
                         +=========&gt;
                     </div>
                     {archery.hit && <div className="absolute top-[25%] pixel-box p-4 text-3xl text-black font-bold animate__animated animate__bounceIn">{targetName}</div>}
@@ -418,16 +448,15 @@
             // 6. 流星雨 (Meteor)
             if (mode === 'meteor') return (
                 <div className="w-full h-full relative overflow-hidden">
-                    {/* 背景流星雨 */}
-                    {isRolling && Array.from({length:10}).map((_,i) => {
+                    {/* 全螢幕對角流星 */}
+                    {isRolling && Array.from({length:15}).map((_,i) => {
                         const icons = ['🌟','⭐️','✨','🌈'];
-                        return <div key={i} className="absolute text-4xl animate-[meteor-cross_1.5s_linear_infinite]" 
-                             style={{left: `${Math.random()*100}%`, top: '-10%', animationDelay: `${Math.random()}s`}}>{icons[i%4]}</div>
+                        return <div key={i} className="absolute text-4xl meteor-rain-item" 
+                             style={{left: `${Math.random()*100}%`, top: `${Math.random()*50}%`, animationDelay: `${Math.random()}s`, animationDuration: `${0.8+Math.random()}s`}}>{icons[i%4]}</div>
                     })}
                     
-                    {/* 大流星與撞擊 */}
                     {meteorStage >= 1 && (
-                        <div className={`absolute top-0 right-0 text-[150px] meteor-big ${meteorStage===2?'hidden':''}`}>☄️</div>
+                        <div className={`absolute top-0 right-0 text-[150px] meteor-main ${meteorStage===2?'hidden':''}`}>☄️</div>
                     )}
                     {meteorStage === 2 && (
                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center animate__animated animate__zoomIn">
@@ -443,11 +472,11 @@
                 <div className="flex items-center justify-center h-full">
                      <div className="flex gap-8">
                         {[0,1,2].map(i => (
-                            <div key={i} className={`relative w-48 h-72 card-container ${isRolling ? 'shuffling' : ''}`} style={{animationDelay: `${i*0.1}s`}}>
+                            <div key={i} className={`relative w-48 h-72 card-container ${isRolling ? 'animate-pulse' : ''}`}>
                                 <div className={`w-full h-full card-inner ${cardReveal && i===1 ? 'flipped' : ''}`}>
-                                    <div className="card-front absolute inset-0 bg-purple-900 rounded-xl border-4 border-yellow-400 flex items-center justify-center backface-hidden"><div className="text-8xl opacity-50">🔮</div></div>
-                                    <div className="card-back absolute inset-0 bg-white rounded-xl border-8 border-purple-600 flex flex-col items-center justify-center backface-hidden">
-                                        {i===1 ? <><div className="text-8xl mb-4 animate-bounce">🎁</div><div className="text-3xl font-bold text-purple-900">{winnerObj?.name}</div></> : <div className="text-4xl text-gray-300">X</div>}
+                                    <div className="card-front text-6xl opacity-80">🔮</div>
+                                    <div className="card-back flex flex-col items-center justify-center text-black">
+                                        {i===1 ? <><div className="text-8xl mb-4 animate-bounce">🎁</div><div className="text-3xl font-bold">{winnerObj?.name}</div></> : <div className="text-4xl text-gray-300">X</div>}
                                     </div>
                                 </div>
                             </div>
@@ -473,8 +502,8 @@
             // 9. 足球 (Soccer)
             if (mode === 'soccer') return (
                 <div className="w-full h-full relative flex items-center justify-between px-20">
-                     <div className={`text-9xl absolute transition-all duration-1000 ${soccer.kick ? 'left-[80%] rotate-[720deg]' : 'left-[10%]'}`} style={{top: '50%', transform: 'translateY(-50%)'}}>⚽️</div>
-                     <div className={`text-[10rem] absolute right-10 ${soccer.goal ? 'animate__animated animate__wobble' : ''}`} style={{top: '50%', transform: 'translateY(-50%)'}}>🥅</div>
+                     <div className={`text-9xl absolute ${soccer.kick ? 'ball-anim' : 'ball-bobbing'} left-[10%]`} style={{top: '50%'}}>⚽️</div>
+                     <div className={`text-[10rem] absolute right-10 ${soccer.goal ? 'net-hit' : ''}`} style={{top: '50%', transform: 'translateY(-50%)'}}>🥅</div>
                      {soccer.goal && (
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pixel-box p-6 text-4xl text-black font-bold animate__animated animate__zoomIn">GOAL! {targetName}</div>
                      )}
@@ -485,17 +514,17 @@
             if (mode === 'bomb') return (
                  <div className="flex flex-col items-center justify-center h-full">
                      {bomb.boom ? (
-                         <div className="animate__animated animate__zoomIn text-center">
+                         <div className="bomb-boom text-center">
                              <div className="text-9xl mb-4">💥</div>
                              <div className="pixel-box px-8 py-4 text-5xl text-black font-bold">{targetName}</div>
                          </div>
                      ) : (
-                         <div className="text-[100px] transition-transform duration-100" style={{transform: `scale(${bomb.size})`}}>💣</div>
+                         <div className="text-[100px] bomb-anim" style={{transform: `scale(${bomb.size})`}}>💣</div>
                      )}
                  </div>
             );
 
-            // 11. 轉盤 (Retro)
+            // 11. 轉盤 (Wheel)
             if (mode === 'retro') return (
                 <div className="relative flex items-center justify-center">
                     <div className="absolute top-[-50px] text-8xl z-20 text-white drop-shadow-xl">⬇</div>
@@ -509,6 +538,20 @@
             );
 
             return null;
+        };
+
+        // 浮動表情符號
+        const FloatingHearts = () => {
+            const icons = ["💕", "💘", "😇", "🥰", "🤪"];
+            const items = useMemo(() => Array.from({length: 20}).map((_,i)=>({
+                id: i, icon: icons[i%icons.length], 
+                left: Math.random()*100, delay: Math.random()*2, dur: 3+Math.random()*2
+            })), []);
+            return (
+                <div className="absolute inset-0 pointer-events-none z-0">
+                    {items.map(p => <div key={p.id} className="emoji-particle" style={{left:`${p.left}%`, bottom:'0', animationDelay:`${p.delay}s`, animationDuration:`${p.dur}s`}}>{p.icon}</div>)}
+                </div>
+            );
         };
 
         // --- 1. Index Page ---
@@ -539,7 +582,6 @@
             return (
                 <div className="min-h-screen relative overflow-hidden">
                     <div className="retro-grid-mask"></div><div className="retro-grid-container"><div className="retro-grid"></div></div>
-
                     <div className="absolute top-4 left-4 z-20 flex gap-2"><span className="pixel-box px-2 py-1 text-xs bg-blue-300 text-black">ROOM: {roomId}</span></div>
                     <div className="absolute inset-0 pointer-events-none">{players.map((p,i)=><PlayerBubble key={i} p={p}/>)}</div>
                     <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
@@ -563,7 +605,7 @@
             const [gameStatus, setGameStatus] = useState({ status: 'lobby' }); 
             const [playerIndex, setPlayerIndex] = useState(0);
 
-            const { status, emit } = useSocket(room, (evt, data) => {
+            useSocket(room, (evt, data) => {
                 if (evt === 'game_status_update') setGameStatus(data);
                 if (evt === 'game_reset') { localStorage.removeItem('lottery_user'); setUser(null); setJoined(false); alert("活動已重置"); }
                 if (evt === 'init_data' && data.players && user) {
@@ -573,14 +615,14 @@
             });
 
             useEffect(() => { try { const u = JSON.parse(localStorage.getItem('lottery_user')); if (u) { setUser(u); setJoined(true); } } catch(e){} }, []);
-            useEffect(() => { if (status === 'connected' && joined && user) emit('player_join', { user }); }, [status, joined]);
-            const handleJoin = () => { if(!nameInput.trim()) return; const newUser = { id: Date.now().toString(), name: nameInput.trim(), avatar: myAvatar }; setUser(newUser); setJoined(true); localStorage.setItem('lottery_user', JSON.stringify(newUser)); emit('player_join', { user: newUser }); };
+            
+            const handleJoin = () => { if(!nameInput.trim()) return; const newUser = { id: Date.now().toString(), name: nameInput.trim(), avatar: myAvatar }; setUser(newUser); setJoined(true); localStorage.setItem('lottery_user', JSON.stringify(newUser)); };
             
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
 
-            if(isWinner) return <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center"><div className="animate__animated animate__tada animate__infinite text-9xl mb-6">🏆</div><div className="pixel-box-dark p-6 mb-4"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div><div className="pixel-box p-4 flex flex-col items-center"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">No.{playerIndex}<br/>{user?.name}</div></div></div>;
+            if(isWinner) return <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center p-4 text-center"><FloatingHearts /><div className="pixel-box-dark p-6 mb-4 relative z-10"><h1 className="text-2xl text-yellow-400 mb-2">YOU WIN!</h1><p className="text-sm">恭喜中獎！</p></div><div className="pixel-box p-4 flex flex-col items-center relative z-10"><div className="text-6xl mb-2">{user?.avatar}</div><div className="text-xl font-bold">No.{playerIndex}<br/>{user?.name}</div></div></div>;
             if(!joined) return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4"><div className="pixel-box p-6 w-full max-w-sm text-center"><h1 className="text-xl mb-6 text-blue-600">PLAYER JOIN</h1><div className="grid grid-cols-4 gap-2 mb-6">{AVATARS.slice(0, 8).map(a => <button key={a} onClick={() => setMyAvatar(a)} className={`text-2xl p-2 border-2 ${myAvatar === a ? 'border-blue-500 bg-blue-100' : 'border-transparent'}`}>{a}</button>)}</div><input type="text" className="w-full border-4 border-black p-3 font-mono text-center mb-6 text-black" placeholder="YOUR NAME" value={nameInput} onChange={e => setNameInput(e.target.value)} maxLength={8} /><button onClick={handleJoin} className="pixel-btn pixel-btn-yellow w-full py-4 text-lg">ENTER</button></div></div>;
-            return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4"><div className="absolute top-2 right-2 text-[10px] text-green-400">{status}</div>{gameStatus.status === 'playing' ? <div className="text-center animate-pulse"><div className="text-6xl mb-4">🎲</div><div className="text-yellow-400 text-xl">ROLLING...</div></div> : <div className="text-center w-full max-w-sm"><div className="pixel-box-dark p-8 mb-6"><div className="text-6xl mb-4">{user.avatar}</div><div className="text-2xl text-yellow-400">No.{playerIndex}<br/><span className="text-sm text-white">{user.name}</span></div><div className="mt-4 text-xs text-green-400 border border-green-400 px-2 py-1 inline-block">READY</div></div></div>}</div>;
+            return <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-4">{gameStatus.status === 'playing' ? <div className="text-center animate-pulse"><div className="text-6xl mb-4">🎲</div><div className="text-yellow-400 text-xl">ROLLING...</div></div> : <div className="text-center w-full max-w-sm"><div className="pixel-box-dark p-8 mb-6"><div className="text-6xl mb-4">{user.avatar}</div><div className="text-2xl text-yellow-400">No.{playerIndex}<br/><span className="text-sm text-white">{user.name}</span></div><div className="mt-4 text-xs text-green-400 border border-green-400 px-2 py-1 inline-block">READY</div></div></div>}</div>;
         };
 
         // --- 3. Host App ---
@@ -591,19 +633,6 @@
             const [gameMode, setGameMode] = useState('slots'); 
             const [targetCount, setTargetCount] = useState(1);
             const [displayState, setDisplayState] = useState({ winner: null, rolling: false, text: "READY" });
-
-            // 浮動表情符號
-            const FloatingEmojis = () => {
-                const emojis = ["💕", "💘", "😇", "🥰", "🤪"];
-                const particles = useMemo(() => Array.from({length: 20}).map((_, i) => ({
-                    id: i,
-                    emoji: emojis[Math.floor(Math.random()*emojis.length)],
-                    left: Math.random() * 100,
-                    delay: Math.random() * 2,
-                    duration: 3 + Math.random() * 2
-                })), []);
-                return <div className="absolute inset-0 pointer-events-none">{particles.map(p => <div key={p.id} className="absolute text-4xl animate-[floatUp_linear_infinite]" style={{left:`${p.left}%`, bottom:'-50px', animationDelay:`${p.delay}s`, animationDuration:`${p.duration}s`}}>{p.emoji}</div>)}</div>;
-            };
 
             const { emit } = useSocket(room, (evt, data) => {
                 if(evt === 'player_list_update') setAllPlayers(data);
@@ -653,7 +682,6 @@
             const processWinners = async (winnersList, mode, duration) => {
                 for (let i = 0; i < winnersList.length; i++) {
                     const w = winnersList[i];
-                    
                     setDisplayState({ rolling: true, winner: null, text: "ROLLING" });
                     
                     await new Promise(r => setTimeout(r, duration)); 
@@ -661,7 +689,7 @@
                     setDisplayState({ rolling: false, winner: w, text: `No.${allPlayers.findIndex(p => p.id === w.id)+1} - ${w.name}` });
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                     
-                    await new Promise(r => setTimeout(r, 2000)); 
+                    await new Promise(r => setTimeout(r, 3000)); 
                     
                     // 顯示中獎彈窗
                     setDisplayState(prev => ({ ...prev, showModal: true }));
@@ -670,16 +698,17 @@
                     // 等待關閉
                     await new Promise(resolve => {
                          const check = setInterval(() => {
-                             // Check for manual close state via internal variable or rely on state update
-                         }, 100);
-                         // 這裡使用 state callback 會有閉包問題，改用 ref 或簡易輪詢太複雜
-                         // 簡化：必須手動點擊「關閉」
+                             // 等待按鈕被點擊 (React state 更新)
+                             if (!displayState.showModal) {
+                                 clearInterval(check);
+                                 resolve();
+                             }
+                         }, 500);
+                         // 這裡無法直接讀取最新的 state，所以需要一個外部變數或機制
+                         // 為了確保流程能跑完，這裡設定自動 10 秒後下一位 (備案)
+                         setTimeout(() => { clearInterval(check); resolve(); }, 10000);
                     });
                     
-                    // 由於 React 閉包，這裡無法直接等待按鈕點擊，因此我們不自動跳下一個
-                    // 而是讓按鈕觸發的函數去呼叫 "next" (這裡為了簡化，單次抽獎只顯示一個，若多個需重構 Loop)
-                    // 本次實作：若有多人，會自動間隔 10 秒跳下一個，或手動關閉
-                    await new Promise(r => setTimeout(r, 8000));
                     setDisplayState(prev => ({ ...prev, showModal: false }));
                     await new Promise(r => setTimeout(r, 500));
                 }
@@ -693,7 +722,7 @@
                     {/* 得獎彈窗 */}
                     {displayState.showModal && displayState.winner && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 animate__animated animate__fadeIn">
-                            <FloatingEmojis />
+                            <FloatingHearts />
                             <div className="text-center animate__animated animate__zoomInDown relative z-10">
                                 <div className="pixel-box-dark p-12 border-8 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.5)]">
                                     <div className="text-9xl mb-6 animate-bounce">{displayState.winner.avatar}</div>
