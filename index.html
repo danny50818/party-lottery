@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>家防中心尾牙盛典 (Sound FX Edition)</title>
+    <title>家防中心尾牙盛典 (V13.0 Final)</title>
 
     <!-- 1. 錯誤攔截 -->
     <script>
@@ -29,14 +29,11 @@
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 
     <style>
-        /* 字體設定：全域微軟正黑體 */
+        /* 字體設定 */
         body { 
-            margin: 0; 
-            overflow: hidden; 
+            margin: 0; overflow: hidden; 
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
-            background-color: #1a0000;
-            color: #fff;
-            font-weight: bold;
+            background-color: #1a0000; color: #fff; font-weight: bold;
             image-rendering: pixelated;
         }
 
@@ -52,7 +49,7 @@
         .pixel-btn:active { transform: translateY(4px); }
         .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; text-shadow: none; }
 
-        /* --- 3D 紅色流動背景 --- */
+        /* --- 3D 背景 --- */
         .retro-wrapper {
             position: fixed; inset: 0; z-index: -10;
             background: radial-gradient(circle at center, #500000 0%, #1a0000 100%);
@@ -66,57 +63,41 @@
             background-size: 80px 80px;
             transform: rotateX(70deg);
             animation: grid-move 2s linear infinite;
-            box-shadow: 0 0 150px rgba(255, 0, 0, 0.5);
-        }
-        .retro-horizon {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to bottom, #110000 20%, transparent 60%);
-            z-index: -5; pointer-events: none;
+            box-shadow: 0 0 150px rgba(255, 0, 0, 0.4);
         }
         @keyframes grid-move { 0% { background-position: 0 0; } 100% { background-position: 0 80px; } }
 
-        /* --- 遊戲動畫 Keyframes --- */
-        
-        /* 賽馬 */
+        /* --- 核心動畫 --- */
         @keyframes horse-gallop { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
         .horse-sprite { animation: horse-gallop 0.15s steps(2) infinite; display: inline-block; }
-
-        /* 拉霸 */
+        
         @keyframes reel-move { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
-        .reel-blur { 
-            background: repeating-linear-gradient(180deg, #fff 0, #ccc 50%, #fff 100%);
-            background-size: 100% 20px;
-            animation: reel-move 0.1s linear infinite;
-            filter: blur(2px);
-            color: transparent;
-        }
+        .reel-blur { background: repeating-linear-gradient(180deg, #fff 0, #ccc 50%, #fff 100%); background-size: 100% 20px; animation: reel-move 0.1s linear infinite; filter: blur(2px); color: transparent; }
 
-        /* 瑪利歐動畫 */
+        /* 瑪利歐分段動畫 */
         @keyframes mario-phase1 { 0% { left: -10%; transform: scaleX(1); } 100% { left: 110%; transform: scaleX(1); } }
         @keyframes mario-phase2 { 0% { left: 110%; transform: scaleX(-1); } 100% { left: 50%; transform: scaleX(-1); } }
         @keyframes mario-jump-up { 0% { bottom: 20px; } 50% { bottom: 250px; } 100% { bottom: 20px; } }
-        .mario-p1 { animation: mario-phase1 2.5s linear forwards; }
-        .mario-p2 { animation: mario-phase2 1.5s linear forwards; }
-        .mario-jump-anim { animation: mario-jump-up 0.5s ease-out forwards; }
-        @keyframes block-bump { 0% { transform: translateY(0); } 50% { transform: translateY(-30px); } 100% { transform: translateY(0); } }
+        .mario-p1 { animation: mario-phase1 3s linear forwards; }
+        .mario-p2 { animation: mario-phase2 2s linear forwards; }
+        .mario-p3 { animation: mario-jump-up 0.6s ease-out forwards; }
+        
+        @keyframes block-bump { 0% { transform: translateY(0); } 50% { transform: translateY(-40px); } 100% { transform: translateY(0); } }
         .block-bump-anim { animation: block-bump 0.3s ease-out; }
 
-        /* 射箭 */
-        @keyframes arrow-fly-in { 0% { left: -50vw; } 100% { left: calc(50% - 140px); } } 
-        .arrow-anim { animation: arrow-fly-in 0.6s ease-out forwards; }
-        @keyframes target-shake { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.2) rotate(10deg); } }
+        /* 射箭精準命中 */
+        @keyframes arrow-fly-perfect { 0% { left: -100%; } 100% { left: calc(50% - 150px); } } 
+        .arrow-anim { animation: arrow-fly-perfect 0.7s ease-out forwards; }
+        @keyframes target-shake { 0%, 100% { transform: scale(1) translateX(-50%); } 50% { transform: scale(1.1) translateX(-45%) rotate(5deg); } }
         .target-hit { animation: target-shake 0.5s ease-in-out; }
 
-        /* 流星雨 */
-        @keyframes meteor-cross { 
-            0% { transform: translate(100vw, -100vh) scale(0.5); opacity: 1; } 
-            100% { transform: translate(-100vw, 100vh) scale(1); opacity: 0; } 
-        }
-        .meteor-shower-item { position: absolute; top: 0; right: 0; animation: meteor-cross 2s linear infinite; }
-        @keyframes meteor-center-crash { 0% { transform: translate(100vw, -100vh) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 1; top: 50%; left: 50%; } }
-        .meteor-final { position: absolute; top: 0; right: 0; animation: meteor-center-crash 0.8s ease-in forwards; }
+        /* 流星 */
+        @keyframes meteor-cross { 0% { transform: translate(110vw, -100vh) scale(0.5); opacity: 1; } 100% { transform: translate(-20vw, 120vh) scale(1); opacity: 0; } }
+        .meteor-item { position: absolute; top: 0; right: 0; animation: meteor-cross 2s linear infinite; }
+        @keyframes meteor-center { 0% { transform: translate(100vw, -100vh) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 1; top: 50%; left: 50%; } }
+        .meteor-final { position: absolute; top: 0; right: 0; animation: meteor-center 0.8s ease-in forwards; }
 
-        /* 塔羅牌 */
+        /* 塔羅 */
         .card-container { perspective: 1000px; }
         .card-inner { width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
         .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 4px solid #facc15; }
@@ -124,12 +105,18 @@
         .card-back { background: #fff; transform: rotateY(180deg); color: #000; }
         .flipped .card-inner { transform: rotateY(180deg); }
 
-        /* 轉盤 */
-        @keyframes wheel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .wheel-spinning { animation: wheel-spin 0.3s linear infinite; }
+        /* 雷達與紅點 */
+        @keyframes radar-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .radar-line { animation: radar-spin 2s linear infinite; transform-origin: bottom right; }
+        @keyframes red-dot-pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .red-dot-anim { animation: red-dot-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
-        /* 特效氣泡 */
-        @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 20% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
+        /* 轉盤旋轉 */
+        @keyframes wheel-fast-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .wheel-spinning { animation: wheel-fast-spin 0.2s linear infinite; }
+
+        /* 氣泡與粒子 */
+        @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
         .bubble { position: absolute; bottom: -100px; animation: floatUp linear infinite; }
         @keyframes love-float { 0% { transform: translateY(100%) scale(0.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-200%) scale(1.5); opacity: 0; } }
         .love-particle { position: absolute; animation: love-float 4s ease-out forwards; bottom: 0; font-size: 2rem; }
@@ -149,6 +136,11 @@
     </div>
 
     <script type="text/babel">
+        // ==========================================
+        //  配置
+        // ==========================================
+        const BACKEND_URL = ""; 
+
         const { useState, useEffect, useRef, useMemo, Component } = React;
         const { createRoot } = ReactDOM;
         
@@ -158,28 +150,11 @@
         // --- 音效引擎 ---
         const AudioManager = {
             ctx: null,
-            init: function() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
+            init() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 if (this.ctx.state === 'suspended') this.ctx.resume();
             },
-            playTension: function() {
-                this.init();
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.linearRampToValueAtTime(600, now + 4);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.linearRampToValueAtTime(0, now + 4);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(now + 4);
-            },
-            playWin: function() {
+            playWin() {
                 this.init();
                 const now = this.ctx.currentTime;
                 [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
@@ -189,13 +164,11 @@
                     osc.frequency.value = f;
                     gain.gain.setValueAtTime(0.1, now + i*0.1);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + i*0.1 + 0.6);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now + i*0.1);
-                    osc.stop(now + i*0.1 + 0.6);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now + i*0.1); osc.stop(now + i*0.1 + 0.6);
                 });
             },
-            speak: function(text) {
+            speak(text) {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
                     const utter = new SpeechSynthesisUtterance(text);
@@ -211,7 +184,8 @@
             const [status, setStatus] = useState('connecting');
             useEffect(() => {
                 if(!roomId) return;
-                const socket = io({ reconnectionAttempts: 5, timeout: 10000 }); 
+                const connectionUrl = BACKEND_URL || window.location.origin;
+                const socket = io(connectionUrl, { reconnectionAttempts: 5, timeout: 10000 }); 
                 socketRef.current = socket;
                 socket.on('connect', () => { setStatus('connected'); socket.emit('join_room', roomId); removeLoading(); });
                 socket.on('disconnect', () => setStatus('disconnected'));
@@ -226,56 +200,55 @@
         };
 
         // --- 視覺組件 (10種模式) ---
-        const VisualComponent = ({ candidates, targetName, isRolling, mode, winnerObj }) => {
+        const VisualComponent = ({ candidates = [], targetName, isRolling, mode, winnerObj }) => {
             const [display, setDisplay] = useState("READY");
             const [horses, setHorses] = useState([]);
             const [slotStops, setSlotStops] = useState([false, false, false]);
-            const [marioPhase, setMarioPhase] = useState(0); 
+            const [marioPhase, setMarioPhase] = useState(0); // 0:wait, 1:runR, 2:runL, 3:wait, 4:jump
             const [shooter, setShooter] = useState({x: 50, laser: false, boom: false});
             const [archery, setArchery] = useState({shoot: false, hit: false});
             const [meteorStage, setMeteorStage] = useState(0); 
-            const [cardFlipState, setCardFlipState] = useState([0,0,0]);
+            const [cardFlip, setCardFlip] = useState([0,0,0]);
             const [radarDot, setRadarDot] = useState(false);
             const [soccer, setSoccer] = useState({kick: false, goal: false});
             const [bomb, setBomb] = useState({size: 1, boom: false});
-            const [wheelSpin, setWheelSpin] = useState(true);
+            const [wheelSpin, setWheelSpin] = useState(false);
 
             useEffect(() => {
                 let interval;
                 if (isRolling) {
-                    setMarioPhase(1);
-                    setSlotStops([false, false, false]);
-                    setShooter({x: 50, laser: false, boom: false}); 
-                    setArchery({shoot: false, hit: false});
-                    setMeteorStage(0);
-                    setCardFlipState([0,0,0]);
-                    setRadarDot(false);
-                    setSoccer({kick: false, goal: false});
-                    setBomb({size: 1, boom: false});
-                    setWheelSpin(true);
+                    setMarioPhase(1); setSlotStops([false, false, false]);
+                    setShooter({x: 50, laser: false, boom: false}); setArchery({shoot: false, hit: false});
+                    setMeteorStage(0); setCardFlip([0,0,0]); setRadarDot(false);
+                    setSoccer({kick: false, goal: false}); setBomb({size: 1, boom: false}); setWheelSpin(true);
 
                     if (mode === 'race') {
                         const racers = candidates.slice(0, 5).map(p => ({...p, progress: 0}));
                         while(racers.length < 5) racers.push({name:'CPU', avatar:'🐎', progress:0});
                         setHorses(racers);
-                        interval = setInterval(() => { setHorses(prev => prev.map(h => ({...h, progress: Math.min(88, h.progress + Math.random() * 2)}))); }, 100);
+                        interval = setInterval(() => setHorses(prev => prev.map(h => ({...h, progress: Math.min(88, h.progress + Math.random() * 2)}))), 100);
                     } 
                     else if (mode === 'shooter') {
-                        interval = setInterval(() => { setShooter(prev => ({...prev, x: (prev.x + 1) % 80 + 10})); }, 50);
+                        interval = setInterval(() => setShooter(prev => ({...prev, x: (prev.x + 2) % 80 + 10})), 50);
                     }
                     else if (mode === 'bomb') {
                         interval = setInterval(() => setBomb(prev => ({...prev, size: Math.min(8, prev.size + 0.05)})), 100);
                     }
                     else if (mode === 'radar') {
-                        setTimeout(() => setRadarDot(true), 2000);
+                        setTimeout(() => setRadarDot(true), 2000); // 旋轉途中紅點出現
                     }
                     else if (!['slots', 'retro', 'magic', 'adventure', 'meteor'].includes(mode)) {
-                        interval = setInterval(() => { setDisplay(`P-${Math.floor(Math.random() * 100)}`); }, 100);
+                        interval = setInterval(() => {
+                            if(candidates.length > 0) {
+                                const randomIdx = Math.floor(Math.random() * candidates.length);
+                                setDisplay(`No.${randomIdx + 1}`);
+                            }
+                        }, 100);
                     }
                 } 
                 else if (targetName) {
                     setDisplay(targetName);
-                    if (mode === 'race' && winnerObj) setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 98} : h));
+                    if (mode === 'race' && winnerObj) setHorses(prev => prev.map(h => h.name === winnerObj.name ? {...h, progress: 95} : h));
                     if (mode === 'slots') {
                         setTimeout(() => setSlotStops([true, false, false]), 500);
                         setTimeout(() => setSlotStops([true, true, false]), 1500);
@@ -283,8 +256,8 @@
                     }
                     if (mode === 'adventure') {
                         setMarioPhase(2); 
-                        setTimeout(() => setMarioPhase(3), 1500); 
-                        setTimeout(() => setMarioPhase(4), 1600); 
+                        setTimeout(() => setMarioPhase(3), 2000); 
+                        setTimeout(() => setMarioPhase(4), 2100); 
                     }
                     if (mode === 'shooter') {
                         setShooter(prev => ({...prev, x: 50, laser: true}));
@@ -295,39 +268,43 @@
                         setTimeout(() => setArchery(prev => ({...prev, hit: true})), 800);
                     }
                     if (mode === 'meteor') {
-                        setMeteorStage(1);
-                        setTimeout(() => setMeteorStage(2), 1000);
+                        setMeteorStage(1); setTimeout(() => setMeteorStage(2), 1000);
                     }
                     if (mode === 'magic') {
-                        setTimeout(() => setCardFlipState([1, 0, 0]), 500);
-                        setTimeout(() => setCardFlipState([1, 1, 0]), 1500);
-                        setTimeout(() => setCardFlipState([1, 1, 2]), 2500);
+                        setTimeout(() => setCardFlip([1, 0, 0]), 500);
+                        setTimeout(() => setCardFlip([1, 1, 0]), 1500);
+                        setTimeout(() => setCardFlip([1, 1, 2]), 2500);
                     }
+                    if (mode === 'radar') setRadarDot(true);
                     if (mode === 'soccer') {
                         setSoccer({kick: true, goal: false});
                         setTimeout(() => setSoccer(prev => ({...prev, goal: true})), 1200);
                     }
                     if (mode === 'bomb') {
-                        setBomb(prev => ({...prev, size: 10}));
-                        setTimeout(() => setBomb(prev => ({...prev, boom: true})), 500);
+                        setBomb(prev => ({...prev, size: 10})); setTimeout(() => setBomb(prev => ({...prev, boom: true})), 500);
                     }
                     if (mode === 'retro') setWheelSpin(false);
                 }
                 return () => clearInterval(interval);
             }, [isRolling, targetName, mode, winnerObj, candidates]);
 
-            // 遊戲視覺細節
+            // 1. 瑪利歐
             if (mode === 'adventure') return (
-                <div className="w-full h-full relative flex flex-col justify-end pb-20">
+                <div className="w-full h-full relative flex flex-col justify-end pb-20 overflow-hidden">
                      <div className="absolute top-[30%] left-1/2 -translate-x-1/2 flex gap-4">
                          <div className={`w-24 h-24 bg-yellow-600 border-4 border-black flex items-center justify-center text-white font-bold text-5xl ${marioPhase===4?'block-bump-anim':''}`}>?</div>
                      </div>
-                     <div className="h-2 bg-red-900 w-full relative z-10"></div>
-                     <div className={`absolute bottom-[20px] text-9xl ${marioPhase===1 ? 'mario-p1' : ''} ${marioPhase===2 ? 'mario-p2' : ''} ${marioPhase===4 ? 'mario-jump-anim left-1/2 -translate-x-1/2' : ''}`} style={{left: marioPhase===0?'-10%': marioPhase===3?'50%': undefined }}>🚶🏼‍➡️</div>
-                     {!isRolling && marioPhase===4 && <div className="absolute top-[10%] left-1/2 -translate-x-1/2 animate__animated animate__bounceIn pixel-box p-4 text-3xl font-bold text-black">{winnerObj?.name}</div>}
+                     <div className="h-1 bg-red-800 w-full relative z-10"></div>
+                     <div className={`absolute bottom-[10px] text-9xl 
+                        ${marioPhase===1 ? 'mario-p1' : ''} 
+                        ${marioPhase===2 ? 'mario-p2' : ''} 
+                        ${marioPhase===4 ? 'mario-p3 left-1/2 -translate-x-1/2' : ''}`}
+                        style={{left: marioPhase===0?'-10%': marioPhase===3?'50%': undefined }}>🚶🏼‍➡️</div>
+                     {!isRolling && targetName && marioPhase===4 && <div className="absolute top-[10%] left-1/2 -translate-x-1/2 animate__animated animate__bounceIn pixel-box p-4 text-3xl font-bold text-black">{winnerObj?.name}</div>}
                 </div>
             );
 
+            // 2. 拉霸
             if (mode === 'slots') return (
                 <div className="flex justify-center gap-6 bg-yellow-600 p-8 rounded-[2rem] border-8 border-yellow-800 pixel-box shadow-2xl">
                     {[0, 1, 2].map(col => (
@@ -339,6 +316,7 @@
                 </div>
             );
 
+            // 3. 射箭
             if (mode === 'archery') return (
                 <div className="w-full h-full relative flex items-center justify-center">
                     <div className={`w-64 h-64 bg-white rounded-full border-[20px] border-red-600 flex items-center justify-center shadow-xl ${archery.hit?'target-hit':''}`}><div className="w-32 h-32 bg-white rounded-full border-[20px] border-blue-600 flex items-center justify-center"><div className="w-10 h-10 bg-yellow-400 rounded-full"></div></div></div>
@@ -347,23 +325,25 @@
                 </div>
             );
 
-            if (mode === 'meteor') return (
-                <div className="w-full h-full relative overflow-hidden">
-                    {isRolling && Array.from({length:10}).map((_,i) => <div key={i} className="absolute text-4xl meteor-shower-item" style={{left:`${Math.random()*100}%`, animationDelay:`${Math.random()}s`}}>🌟</div>)}
-                    {meteorStage >= 1 && <div className={`absolute text-[150px] meteor-final ${meteorStage===2?'hidden':''}`}>☄️</div>}
-                    {meteorStage === 2 && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center animate__animated animate__zoomIn"><div className="text-[150px] mb-4">💥</div><div className="pixel-box px-8 py-4 text-5xl text-black font-bold">{winnerObj?.name}</div></div>}
+            // 4. 雷達
+            if (mode === 'radar') return (
+                 <div className="w-[600px] h-[600px] rounded-full border-4 border-green-500 bg-black/80 relative flex items-center justify-center overflow-hidden mx-auto">
+                    <div className={`absolute w-full h-full border-b-2 border-green-500 origin-center ${isRolling ? 'animate-spin' : ''}`} style={{background: 'linear-gradient(to bottom, transparent 50%, rgba(0,255,0,0.2) 100%)'}}></div>
+                    {radarDot && <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-red-600 rounded-full red-dot-anim shadow-[0_0_20px_red]"></div>}
+                    {!isRolling && targetName && <div className="z-10 text-center animate__animated animate__zoomIn"><div className="text-8xl mb-4">{winnerObj?.avatar}</div><div className="text-green-400 font-bold text-4xl pixel-box px-6 py-2 bg-black border-green-500">{winnerObj?.name}</div></div>}
                 </div>
             );
 
+            // 5. 塔羅
             if (mode === 'magic') return (
                 <div className="flex gap-8 justify-center items-center h-full">
                     {[0,1,2].map(i => (
                         <div key={i} className={`relative w-48 h-72 card-container ${isRolling?'shuffling':''}`} style={{animationDelay:`${i*0.1}s`}}>
-                            <div className={`w-full h-full card-inner ${cardFlipState[i] > 0 ? 'flipped' : ''}`}>
+                            <div className={`w-full h-full card-inner ${cardFlip[i] > 0 ? 'flipped' : ''}`}>
                                 <div className="card-front text-6xl opacity-80">🔮</div>
                                 <div className="card-back flex flex-col items-center justify-center text-black">
-                                    {cardFlipState[i] === 1 ? <div className="text-6xl animate-bounce">👻</div> : 
-                                     cardFlipState[i] === 2 ? <><div className="text-6xl mb-4 animate-bounce">🎁</div><div className="text-3xl font-bold">{winnerObj?.name}</div></> : ''}
+                                    {cardFlip[i] === 1 ? <div className="text-6xl animate-bounce">👻</div> : 
+                                     cardFlip[i] === 2 ? <><div className="text-6xl mb-4 animate-bounce">🎁</div><div className="text-xl font-bold">{winnerObj?.name}</div></> : ''}
                                 </div>
                             </div>
                         </div>
@@ -371,6 +351,7 @@
                 </div>
             );
 
+            // 6. 轉盤
             if (mode === 'retro') return (
                 <div className="relative flex items-center justify-center">
                     <div className="absolute top-[-50px] text-8xl z-20 text-white drop-shadow-xl">⬇</div>
@@ -383,8 +364,16 @@
                 </div>
             );
 
-            // 其他模式預設渲染文字
-            return <div className="text-9xl font-black neon-text text-yellow-400 drop-shadow-xl">{display}</div>;
+            // 7. 流星
+            if (mode === 'meteor') return (
+                <div className="w-full h-full relative overflow-hidden">
+                    {isRolling && Array.from({length:10}).map((_,i) => <div key={i} className="absolute text-4xl meteor-item" style={{left:`${Math.random()*100}%`, animationDelay:`${Math.random()}s`}}>🌟</div>)}
+                    {meteorStage >= 1 && <div className={`absolute text-[150px] meteor-final ${meteorStage===2?'hidden':''}`}>☄️</div>}
+                    {meteorStage === 2 && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center animate__animated animate__zoomIn"><div className="text-[150px] mb-4">💥</div><div className="pixel-box px-8 py-4 text-5xl text-black font-bold">{winnerObj?.name}</div></div>}
+                </div>
+            );
+
+            return <div className="text-9xl font-black text-yellow-400 drop-shadow-xl">{display}</div>;
         };
 
         const FloatingHearts = () => {
@@ -393,6 +382,7 @@
             return <div className="absolute inset-0 pointer-events-none z-0">{items.map(p => <div key={p.id} className="love-particle" style={{left:`${p.left}%`, bottom:'0', animationDelay:`${p.delay}s`, animationDuration:`${p.dur}s`}}>{p.icon}</div>)}</div>;
         };
 
+        // --- 迎賓頁 ---
         const IndexPage = ({ onStartHost, initialPlayers }) => {
             const [qrUrl, setQrUrl] = useState('');
             const [roomId, setRoomId] = useState('');
@@ -402,25 +392,38 @@
                 else if (evt === 'init_data' && data.players) setPlayers(data.players);
             });
 
+            // 修復 QR Code 邏輯：偵測 QRCode 函式庫
             useEffect(() => {
-                let rid = new URLSearchParams(window.location.search).get('room');
-                if(!rid) rid = Math.floor(1000 + Math.random() * 9000).toString();
-                setRoomId(rid);
-                const url = `${window.location.href.split('?')[0]}?mode=player&room=${rid}`;
-                if(typeof QRCode !== 'undefined') QRCode.toDataURL(url, { width: 300, margin: 2 }, (e, u) => !e && setQrUrl(u));
+                const interval = setInterval(() => {
+                    if (typeof QRCode !== 'undefined') {
+                        clearInterval(interval);
+                        const params = new URLSearchParams(window.location.search);
+                        let rid = params.get('room');
+                        if(!rid) rid = Math.floor(1000 + Math.random() * 9000).toString();
+                        setRoomId(rid);
+                        const baseUrl = window.location.origin + window.location.pathname;
+                        const url = `${baseUrl}?mode=player&room=${rid}`;
+                        QRCode.toDataURL(url, { width: 300, margin: 2 }, (err, data) => {
+                            if(!err) setQrUrl(data);
+                        });
+                    }
+                }, 500);
+                return () => clearInterval(interval);
             }, []);
 
             return (
                 <div className="min-h-screen relative flex flex-col items-center justify-center p-6">
                     <div className="text-center mb-8 animate__animated animate__bounceIn">
                         <div className="inline-block bg-red-900/80 px-8 py-2 rounded-full border border-yellow-500 text-yellow-300 font-bold mb-6">歡迎蒞臨</div>
-                        <h1 className="text-4xl md:text-7xl font-black mb-4">家防中心尾牙</h1>
-                        <div className="pixel-box p-4 bg-white flex flex-col items-center gap-4">
-                            <div className="bg-white p-4 rounded-3xl shadow-inner">{qrUrl ? <img src={qrUrl} className="w-48 h-48" /> : <div>LOADING...</div>}</div>
+                        <h1 className="text-5xl md:text-7xl font-black mb-4">家防中心尾牙盛典</h1>
+                        <div className="pixel-box p-6 bg-white flex flex-col items-center gap-4">
+                            <div className="bg-white p-4 rounded-3xl shadow-inner">
+                                {qrUrl ? <img src={qrUrl} className="w-64 h-64" /> : <div className="w-64 h-64 flex items-center justify-center text-red-900 font-mono">LOADING QR...</div>}
+                            </div>
                             <div className="text-center text-black font-black text-2xl">{players.length} 人 READY</div>
                         </div>
                     </div>
-                    <div className="absolute bottom-10 right-10"><button onClick={() => onStartHost(roomId, players)} className="pixel-btn pixel-btn-yellow px-8 py-4 text-xl">開始盛典 &gt;</button></div>
+                    <div className="absolute bottom-10 right-10"><button onClick={() => onStartHost(roomId, players)} className="pixel-btn pixel-btn-yellow px-8 py-4 text-xl">進入抽獎系統 &gt;</button></div>
                 </div>
             );
         };
@@ -437,14 +440,14 @@
             useEffect(() => { if (status === 'connected' && joined && user) emit('player_join', { user }); }, [status, joined]);
             
             const handleJoin = (name) => {
-                const newUser = { id: Date.now().toString(), name, avatar: AVATARS[0] };
+                const newUser = { id: Date.now() + "_" + Math.random().toString(36).substr(2, 5), name, avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)] };
                 setUser(newUser); setJoined(true); localStorage.setItem('lottery_user', JSON.stringify(newUser));
             };
 
             const isWinner = gameStatus.status === 'result' && gameStatus.winnerId === user?.id;
-            if(isWinner) return <div className="fixed inset-0 bg-yellow-500 flex flex-col items-center justify-center p-4 text-black"><div className="text-9xl mb-6">🏆</div><h1 className="text-5xl font-black">你中獎了！</h1><p className="text-2xl mt-4 font-bold">快去領獎！</p></div>;
-            if(!joined) return <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-white"><input id="name-in" type="text" className="pixel-box p-4 text-black w-full mb-4 text-center text-xl" placeholder="輸入名字" /><button onClick={() => handleJoin(document.getElementById('name-in').value)} className="pixel-btn pixel-btn-yellow w-full py-4 text-xl">加入</button></div>;
-            return <div className="min-h-screen bg-red-950 flex flex-col items-center justify-center p-8 text-center"><div className="text-6xl mb-6">{user.avatar}</div><h2 className="text-4xl font-bold">{user.name}</h2><p className="mt-4 text-yellow-400 animate-pulse">{gameStatus.status === 'playing' ? '🎲 抽獎中...' : '等待主持人...'}</p></div>;
+            if(isWinner) return <div className="fixed inset-0 bg-yellow-500 flex flex-col items-center justify-center p-4 text-black"><div className="text-9xl mb-6">🏆</div><h1 className="text-5xl font-black">你中獎了！</h1></div>;
+            if(!joined) return <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-white"><input id="name-in" type="text" className="pixel-box p-4 text-black w-full mb-4 text-center text-xl" placeholder="輸入名字" /><button onClick={() => handleJoin(document.getElementById('name-in').value)} className="pixel-btn pixel-btn-yellow w-full py-4 text-xl">加入盛典</button></div>;
+            return <div className="min-h-screen bg-red-950 flex flex-col items-center justify-center p-8 text-center"><div className="text-6xl mb-6">{user.avatar}</div><h2 className="text-4xl font-bold">{user.name}</h2><p className="mt-4 text-yellow-400 animate-pulse">{gameStatus.status === 'playing' ? '🎲 抽獎進行中...' : '等待主持人開始...'}</p></div>;
         };
 
         const HostApp = ({ room, initialPlayers }) => {
@@ -452,7 +455,6 @@
             const [winners, setWinners] = useState([]);
             const [isDrawing, setIsDrawing] = useState(false);
             const [gameMode, setGameMode] = useState('slots'); 
-            const [targetCount, setTargetCount] = useState(1);
             const [displayState, setDisplayState] = useState({ winner: null, rolling: false, text: "READY" });
 
             const { emit } = useSocket(room, (evt, data) => {
@@ -461,7 +463,6 @@
             });
 
             const MODES = ['slots', 'race', 'meteor', 'archery', 'adventure', 'shooter', 'retro', 'magic', 'radar', 'soccer', 'bomb'];
-            
             const availablePlayers = useMemo(() => {
                 const ids = new Set(winners.map(w => w.id));
                 return allPlayers.filter(p => !ids.has(p.id));
@@ -471,33 +472,26 @@
                 if(availablePlayers.length === 0) return alert("名單已空");
                 AudioManager.init();
                 const mode = MODES[Math.floor(Math.random() * MODES.length)];
-                setGameMode(mode);
-                setIsDrawing(true);
+                setGameMode(mode); setIsDrawing(true);
                 emit('update_game_status', { status: { status: 'playing' } });
 
-                const duration = (mode === 'race' || mode === 'adventure' || mode === 'archery') ? 6000 : 4000;
+                const duration = (mode === 'race' || mode === 'adventure' || mode === 'archery') ? 7000 : 5000;
                 setDisplayState({ rolling: true, winner: null, text: "ROLLING" });
                 
-                // 動畫等待
                 await new Promise(r => setTimeout(r, duration)); 
                 
                 const winner = availablePlayers[Math.floor(Math.random() * availablePlayers.length)];
                 setWinners(prev => [...prev, winner]);
-
-                // 揭曉狀態
                 setDisplayState({ rolling: false, winner, text: winner.name });
                 
-                // 播放勝利音效與語音
-                AudioManager.playWin();
-                AudioManager.speak(`恭喜 ${winner.name} 中獎`);
+                AudioManager.playWin(); AudioManager.speak(`恭喜 ${winner.name} 中獎`);
                 confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
 
-                // 2秒後顯示彈窗
                 setTimeout(() => {
                     setDisplayState(prev => ({ ...prev, showModal: true }));
                     emit('update_game_status', { status: { status: 'result', winnerName: winner.name, winnerId: winner.id } });
                     setIsDrawing(false);
-                }, 2000);
+                }, 2500);
             };
 
             return (
@@ -521,7 +515,7 @@
                     </div>
 
                     <div className="h-24 bg-black/60 flex items-center justify-center gap-6 p-4 z-30">
-                        <button onClick={startDraw} disabled={isDrawing || availablePlayers.length === 0} className={`pixel-btn pixel-btn-yellow px-12 py-4 text-3xl font-black`}>{isDrawing ? 'ROLLING...' : '開始抽獎'}</button>
+                        <button onClick={startDraw} disabled={isDrawing || allPlayers.length === 0} className={`pixel-btn pixel-btn-yellow px-12 py-4 text-3xl font-black`}>{isDrawing ? 'ROLLING...' : '開始抽獎'}</button>
                     </div>
                 </div>
             );
@@ -530,6 +524,7 @@
         const App = () => {
             const [mode, setMode] = useState('index');
             const [room, setRoom] = useState('');
+            const [cachedPlayers, setCachedPlayers] = useState([]);
             useEffect(() => {
                 const params = new URLSearchParams(window.location.search);
                 const m = params.get('mode'); const r = params.get('room');
@@ -537,19 +532,11 @@
                 else if (m === 'player' && r) { setMode('player'); setRoom(r); }
                 else setMode('index');
             }, []);
-            const handleStartHost = (rid, ps) => { sessionStorage.setItem(`lottery_players_${rid}`, JSON.stringify(ps)); window.location.href = `?mode=host&room=${rid}`; };
-            return (
-                <ErrorBoundary>
-                    {mode === 'index' && <IndexPage onStartHost={handleStartHost} initialPlayers={[]} />}
-                    {mode === 'host' && <HostApp room={room} initialPlayers={JSON.parse(sessionStorage.getItem(`lottery_players_${room}`) || '[]')} />}
-                    {mode === 'player' && <PlayerApp room={room} />}
-                </ErrorBoundary>
-            );
+            return (mode === 'index' ? <IndexPage onStartHost={(rid, ps) => { setRoom(rid); setCachedPlayers(ps); setMode('host'); window.history.pushState({}, '', `?mode=host&room=${rid}`); }} initialPlayers={[]} /> : (mode === 'host' ? <HostApp room={room} initialPlayers={cachedPlayers} /> : <PlayerApp room={room} />));
         };
 
         const root = createRoot(document.getElementById('root'));
         root.render(<App />);
-        removeLoading();
     </script>
 </body>
 </html>
