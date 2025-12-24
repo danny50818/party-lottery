@@ -32,7 +32,7 @@ function serveFile(res, filename) {
 }
 
 // 1. 手機端路由 - 根目錄 '/'
-app.get('/', (req, res) => {
+app.get('index.html', (req, res) => {
     serveFile(res, 'mobile.html');
 });
 
@@ -153,3 +153,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
