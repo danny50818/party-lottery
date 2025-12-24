@@ -2,35 +2,32 @@ const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
 const path = require('path');
-const os = require('os');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // 允許跨域，方便測試
+        origin: "*", 
         methods: ["GET", "POST"]
     }
 });
 
 // --- 1. 靜態檔案設定 ---
-// 假設您的 HTML 檔案都放在 public 資料夾下
+// 確保 public 資料夾路徑正確
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 路由：手機端 (預設首頁)
 app.get('/', (req, res) => {
-    // 這裡通常回傳手機登入頁面
     res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
 });
 
 // 路由：大螢幕端
 app.get('/screen', (req, res) => {
-    // 這裡回傳大螢幕抽獎頁面
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-
 // --- 2. 資料狀態 ---
+// 注意：在 Render 免費版這類無狀態環境重啟後，變數會重置，適合短期活動
 let users = [];       // { id: socket.id, name: "王小明" }
 let excludedNames = []; // 被剔除的名單
 let winners = [];     // 已中獎名單
@@ -43,58 +40,58 @@ io.on('connection', (socket) => {
 
     // 手機請求登入
     socket.on('mobile_login', (name) => {
-        const cleanName = name.trim();
+        const cleanName = name ? name.toString().trim() : "";
         
-        // 驗證 1: 名字不能為空
         if (!cleanName) {
             socket.emit('login_error', '名字不能為空');
             return;
         }
 
-        // 驗證 2: 名字是否重複
+        // 檢查名字是否重複 
+        // (這裡做嚴格檢查，若某人斷線但Server沒重啟，名字會被佔用，
+        //  若需允許斷線重連，可改為 update socket id 的邏輯)
         const isDuplicate = users.some(u => u.name === cleanName);
         if (isDuplicate) {
             socket.emit('login_error', '此名字已被使用，請換一個');
             return;
         }
 
-        // 登入成功
         const newUser = { id: socket.id, name: cleanName };
         users.push(newUser);
 
-        // 回傳給該手機
+        // 回傳成功給該手機
         socket.emit('login_success', { name: cleanName });
         
-        // 廣播給大螢幕：更新名單
+        // 廣播給大螢幕：更新名單 (只傳名字陣列)
         io.emit('update_user_list', users.map(u => u.name));
         
         console.log(`[Login] ${cleanName} (${socket.id})`);
     });
 
-    // 手機斷線 (可選：是否要從名單移除？通常抽獎活動會保留名單以免斷線就失去資格)
     socket.on('disconnect', () => {
+        // 這裡選擇不移除名單，避免使用者手機螢幕關閉或重新整理網頁後失去抽獎資格
+        // 如果需要移除，可以在這裡實作：
+        // users = users.filter(u => u.id !== socket.id);
+        // io.emit('update_user_list', users.map(u => u.name));
         console.log(`Socket disconnected: ${socket.id}`);
-        // 如果需要斷線移除，可在這裡實作 users = users.filter(...)
-        // 並 io.emit('update_user_list', ...)
     });
-
 
     // --- B. 大螢幕(Admin)事件 ---
 
-    // 大螢幕初始化，獲取當前資料
+    // 大螢幕初始化
     socket.on('admin_init', () => {
         socket.emit('update_user_list', users.map(u => u.name));
         socket.emit('update_winners', winners);
     });
 
-    // 開始滾動 (同步所有手機顯示 "抽獎中...")
+    // 開始滾動 (同步所有手機顯示動畫)
     socket.on('admin_start_rolling', () => {
-        io.emit('client_show_rolling'); // 廣播給所有手機
+        io.emit('client_show_rolling'); 
     });
 
-    // 執行抽獎 (後端計算結果，確保公平性)
+    // 執行抽獎 (伺服器端計算結果)
     socket.on('admin_perform_draw', () => {
-        // 1. 過濾有效名單 (已登入 - 已中獎 - 被剔除)
+        // 過濾有效名單：已登入 - 已中獎 - 被剔除
         const candidates = users.filter(u => 
             !winners.includes(u.name) && 
             !excludedNames.includes(u.name)
@@ -105,16 +102,14 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 2. 隨機抽出一位
+        // 隨機抽選
         const randomIndex = Math.floor(Math.random() * candidates.length);
         const winner = candidates[randomIndex];
         winners.push(winner.name);
 
         console.log(`[Winner] ${winner.name}`);
 
-        // 3. 廣播結果
-        // 給大螢幕：顯示結果
-        // 給所有手機：顯示結果 (手機端會判斷是否是自己中獎)
+        // 廣播結果給所有人 (大螢幕顯示彈窗，手機顯示結果)
         io.emit('draw_result', { winnerName: winner.name });
     });
 
@@ -123,43 +118,23 @@ io.on('connection', (socket) => {
         users = [];
         winners = [];
         excludedNames = [];
-        io.emit('event_reset'); // 通知所有人重置
+        io.emit('event_reset'); // 通知所有客戶端重新整理頁面
         io.emit('update_user_list', []);
         console.log('[Reset] Event reset');
     });
     
-    // 剔除/恢復名單
+    // 剔除/恢復名單 (預留功能，可供管理介面使用)
     socket.on('admin_toggle_exclude', (name) => {
         if (excludedNames.includes(name)) {
             excludedNames = excludedNames.filter(n => n !== name);
         } else {
             excludedNames.push(name);
         }
-        // 通知大螢幕更新狀態 (可選)
     });
 });
 
-// --- 4. 啟動伺服器 ---
+// Render 會自動注入 PORT 環境變數，本地開發預設 3000
 const PORT = process.env.PORT || 3000;
-
-// 取得本機 IP 方便手機掃描
-function getLocalIp() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
-            }
-        }
-    }
-    return 'localhost';
-}
-
 server.listen(PORT, () => {
-    const ip = getLocalIp();
-    console.log('------------------------------------------------');
-    console.log(`Server is running!`);
-    console.log(`> 手機端(Mobile)請連線: http://${ip}:${PORT}`);
-    console.log(`> 大螢幕(Screen)請連線: http://${ip}:${PORT}/screen`);
-    console.log('------------------------------------------------');
+    console.log(`Server is running on port ${PORT}`);
 });
