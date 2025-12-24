@@ -53,8 +53,17 @@
             background: #333; color: #ccc; border: 1px solid #555; padding: 8px 15px; border-radius: 8px; cursor: pointer;
         }
 
-        .input-group { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; }
-        input[type="number"] { background: transparent; border: none; color: var-accent; font-size: 1.2rem; width: 50px; text-align: center; outline: none; }
+        /* --- 修正區域：抽選人數輸入框樣式 --- */
+        .input-group { 
+            display: flex; align-items: center; gap: 10px; 
+            background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; 
+            color: #ffffff; /* 強制標籤文字白色 */
+        }
+        input[type="number"] { 
+            background: transparent; border: none; 
+            color: #ffffff; /* 強制數字白色 */
+            font-size: 1.2rem; width: 50px; text-align: center; outline: none; 
+        }
 
         /* --- 2. 抽獎主畫面 --- */
         #game-page {
@@ -100,13 +109,20 @@
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         .winner-name-big { font-size: 6rem; font-weight: 900; color: #b71c1c; margin: 20px 0; text-shadow: 2px 2px 0px #fff; white-space: nowrap; }
 
-        /* 名單管理 */
+        /* --- 修正區域：名單管理彈窗樣式 --- */
         #manage-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; }
         #manage-modal.active { display: flex; }
-        .manage-box { background: #222; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; height: 70vh; display: flex; flex-direction: column; border: 1px solid var-accent; }
+        .manage-box { 
+            background: #222; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; height: 70vh; 
+            display: flex; flex-direction: column; border: 1px solid var-accent;
+            color: #ffffff; /* 強制彈窗內文字白色 */
+        }
         .user-list-container { flex: 1; overflow-y: auto; background: #111; margin: 15px 0; border: 1px solid #444; }
-        .user-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
-        .excluded-text { text-decoration: line-through; color: #666; }
+        .user-row { 
+            display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; 
+            color: #ffffff; /* 強制列表文字白色 */
+        }
+        .excluded-text { text-decoration: line-through; color: #888; } /* 剔除文字改為灰色 */
         
         .floater { position: absolute; font-size: 3rem; animation: floatUp linear infinite; pointer-events: none; }
         @keyframes floatUp { 0% { transform: translateY(100vh); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
@@ -186,7 +202,6 @@
         const drawBtn = document.getElementById('draw-btn');
 
         // ★★★ 修正 QR Code 指向 /mobile.html ★★★
-        // 這樣掃描後會明確進入手機版頁面
         const mobileUrl = window.location.origin + "/mobile.html";
         document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(mobileUrl)}`;
 
