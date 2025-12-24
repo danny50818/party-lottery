@@ -53,15 +53,15 @@
             background: #333; color: #ccc; border: 1px solid #555; padding: 8px 15px; border-radius: 8px; cursor: pointer;
         }
 
-        /* --- 修正區域：抽選人數輸入框樣式 --- */
+        /* 輸入框樣式 */
         .input-group { 
             display: flex; align-items: center; gap: 10px; 
             background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; 
-            color: #ffffff; /* 強制標籤文字白色 */
+            color: #ffffff;
         }
         input[type="number"] { 
             background: transparent; border: none; 
-            color: #ffffff; /* 強制數字白色 */
+            color: #ffffff;
             font-size: 1.2rem; width: 50px; text-align: center; outline: none; 
         }
 
@@ -109,20 +109,20 @@
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         .winner-name-big { font-size: 6rem; font-weight: 900; color: #b71c1c; margin: 20px 0; text-shadow: 2px 2px 0px #fff; white-space: nowrap; }
 
-        /* --- 修正區域：名單管理彈窗樣式 --- */
+        /* --- 名單管理彈窗 --- */
         #manage-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; }
         #manage-modal.active { display: flex; }
         .manage-box { 
             background: #222; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; height: 70vh; 
             display: flex; flex-direction: column; border: 1px solid var-accent;
-            color: #ffffff; /* 強制彈窗內文字白色 */
+            color: #ffffff;
         }
         .user-list-container { flex: 1; overflow-y: auto; background: #111; margin: 15px 0; border: 1px solid #444; }
         .user-row { 
             display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; 
-            color: #ffffff; /* 強制列表文字白色 */
+            color: #ffffff;
         }
-        .excluded-text { text-decoration: line-through; color: #888; } /* 剔除文字改為灰色 */
+        .excluded-text { text-decoration: line-through; color: #888; }
         
         .floater { position: absolute; font-size: 3rem; animation: floatUp linear infinite; pointer-events: none; }
         @keyframes floatUp { 0% { transform: translateY(100vh); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
@@ -156,6 +156,8 @@
                 <input type="number" id="draw-count" value="1" min="1" max="50">
             </div>
             <button class="btn-small" onclick="openManageModal()">管理名單</button>
+            <!-- 加入音樂開關，方便現場控制 -->
+            <button class="btn-small" onclick="toggleMusic()" id="music-btn">音樂: 開</button>
             <button class="btn-small" onclick="resetEvent()">重置</button>
             <div style="color:#aaa;">參加: <span id="game-join-count">0</span></div>
         </div>
@@ -185,11 +187,18 @@
     <script>
         const socket = io();
         let users = [];
-        let winners = []; // 本地暫存已中獎者 (用於視覺過濾)
+        let winners = []; 
         let localExcluded = new Set();
         let isDrawing = false;
         let animState = 'idle'; 
         let scrollY = 0;
+
+        // BGM 設定
+        // 使用一個穩定的外部音源，您也可以換成自己的連結
+        const bgmAudio = new Audio('https://commondatastorage.googleapis.com/codeskulptor-demos/riceracer_assets/music/race1.ogg');
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0.3;
+        let isMusicOn = true;
 
         // DOM
         const loginPage = document.getElementById('login-page');
@@ -201,74 +210,85 @@
         const floatersContainer = document.getElementById('floaters-container');
         const drawBtn = document.getElementById('draw-btn');
 
-        // ★★★ 修正 QR Code 指向 /mobile.html ★★★
+        // QR Code
         const mobileUrl = window.location.origin + "/mobile.html";
         document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(mobileUrl)}`;
 
         // Socket
         socket.on('connect', () => { socket.emit('admin_init'); });
-        
         socket.on('update_user_list', (u) => { 
             users = u; updateCounters(); 
             if(document.getElementById('manage-modal').classList.contains('active')) renderManageList();
         });
-
-        socket.on('update_winners', (w) => {
-            winners = w; // 同步中獎者
-        });
-
+        socket.on('update_winners', (w) => { winners = w; });
         socket.on('draw_result', (data) => {
-            winners.push(data.winnerName); // 本地也加入，確保視覺立即移除
+            winners.push(data.winnerName);
             stopRollingAndShowWinner(data.winnerName);
         });
-
         socket.on('admin_draw_error', (msg) => { alert(msg); isDrawing=false; resetUI(); });
         socket.on('event_reset', () => location.reload());
+
+        // 音樂控制
+        function toggleMusic() {
+            isMusicOn = !isMusicOn;
+            const btn = document.getElementById('music-btn');
+            if (isMusicOn) {
+                bgmAudio.play().catch(e => console.log("Auto-play prevented"));
+                btn.textContent = "音樂: 開";
+            } else {
+                bgmAudio.pause();
+                btn.textContent = "音樂: 關";
+            }
+        }
 
         // 抽獎流程
         let modalResolver = null;
         async function startMultiDraw() {
-            // 先過濾出有效人數
             const validCount = users.filter(u => !winners.includes(u) && !localExcluded.has(u)).length;
-
-            if(validCount === 0) { alert("無有效參加者(可能都已中獎或被剔除)"); return; }
+            if(validCount === 0) { alert("無有效參加者"); return; }
             if(isDrawing) return;
             
             const countInput = document.getElementById('draw-count').value;
             let count = parseInt(countInput) || 1;
-            
-            // 防止輸入大於剩餘人數
-            if (count > validCount) {
-                count = validCount;
-                alert(`剩餘有效人數僅剩 ${validCount} 人，將抽出 ${validCount} 人`);
-            }
+            if (count > validCount) { count = validCount; alert(`將抽出 ${validCount} 人`); }
 
             isDrawing=true; drawBtn.disabled=true;
             
+            // ★ 開始抽獎：暫停背景音樂 (專注滾動聲)
+            if(isMusicOn) bgmAudio.pause();
+
             for(let i=0; i<count; i++) {
                 drawBtn.textContent = `抽獎中 (${i+1}/${count})`;
                 await new Promise(resolve => {
                     socket.emit('admin_start_rolling');
                     startRollingAnim();
-                    // 延遲發送抽獎請求
                     setTimeout(() => { socket.emit('admin_perform_draw'); resolve(); }, 3500);
                 });
-                await new Promise(r => modalResolver = r); // 等彈窗關閉
+                await new Promise(r => modalResolver = r); 
                 await new Promise(r => setTimeout(r, 500));
             }
             resetUI();
             speak("抽獎環節結束");
         }
 
-        function resetUI() { isDrawing=false; drawBtn.disabled=false; drawBtn.textContent="開始抽獎"; animState='idle'; }
+        function resetUI() { 
+            isDrawing=false; drawBtn.disabled=false; drawBtn.textContent="開始抽獎"; animState='idle';
+            // ★ 抽獎結束，恢復背景音樂 (如果開關是開的)
+            if(isMusicOn) bgmAudio.play().catch(()=>{});
+        }
         function resetEvent() { if(confirm("確定重置?")) socket.emit('admin_reset'); }
 
-        // 彈窗
+        // 彈窗與結果
         function stopRollingAndShowWinner(name) {
             animState='idle'; modalWinnerName.textContent=name;
             winnerModal.classList.add('active');
+            
+            // ★ 中獎時刻：恢復背景音樂 + 播放音效
+            if(isMusicOn) bgmAudio.play().catch(()=>{});
+            
             playWinSound(); speak("恭喜 "+name); createFloaters(); fireConfetti();
         }
+        
         function closeWinnerModal() {
             winnerModal.classList.remove('active'); floatersContainer.innerHTML='';
             if(modalResolver) { modalResolver(); modalResolver=null; } else { resetUI(); }
@@ -283,9 +303,6 @@
         function drawLoop() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
             const cx=canvas.width/2; const cy=canvas.height/2;
-
-            // ★★★ 視覺過濾：排除已中獎者 & 被剔除者 ★★★
-            // 這樣畫面上的人會越來越少
             const validUsers = users.filter(u => !winners.includes(u) && !localExcluded.has(u));
             const displayList = validUsers.length > 0 ? validUsers : ["等待加入..."];
 
@@ -332,7 +349,6 @@
                 const row=document.createElement('div'); row.className='user-row';
                 let btnHtml = `<button class="btn-small" style="background:${isEx?'#333':'#c62828'}" onclick="toggleEx('${u}')">${isEx?'恢復':'剔除'}</button>`;
                 if(isWon) btnHtml = `<span style="color:#ffd700">👑 已中獎</span>`;
-                
                 row.innerHTML=`<span class="${isEx?'excluded-text':''}">${u}</span>${btnHtml}`;
                 el.appendChild(row);
             });
@@ -341,9 +357,15 @@
 
         // 其他
         function updateCounters(){ joinCountEl.textContent=users.length; gameJoinCountEl.textContent=users.length; }
-        function enterGame(){ loginPage.style.display='none'; gamePage.classList.add('active'); initAudio(); initGameVisuals(); }
+        function enterGame(){ 
+            loginPage.style.display='none'; 
+            gamePage.classList.add('active'); 
+            initAudio(); 
+            initGameVisuals(); 
+            // ★ 進入主控台時，開始播放音樂
+            if(isMusicOn) bgmAudio.play().catch(()=>{});
+        }
         
-        // 音效/特效 (簡化版)
         let ac; function initAudio(){ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)(); }
         function playTick(p){ if(!ac)return; const o=ac.createOscillator(),g=ac.createGain(); o.type='square'; o.frequency.value=p; g.gain.setValueAtTime(0.1,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.01,ac.currentTime+0.05); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+0.06); }
         function playWinSound(){ if(!ac)return; const n=ac.currentTime; [523,659,783,1046].forEach((f,i)=>{ const o=ac.createOscillator(),g=ac.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0,n+i*0.1); g.gain.linearRampToValueAtTime(0.2,n+i*0.1+0.05); g.gain.exponentialRampToValueAtTime(0.01,n+i*0.1+1.5); o.connect(g); g.connect(ac.destination); o.start(n+i*0.1); o.stop(n+i*0.1+1.6); }); }
