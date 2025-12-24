@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>家防中心尾牙盛典 (V14.0 Ultimate)</title>
+    <title>家防中心尾牙盛典 (Drum Roll Edition)</title>
 
     <!-- 1. 錯誤攔截 -->
     <script>
@@ -16,7 +16,7 @@
     <!-- CSS Framework -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     
     <!-- 2. React & Babel -->
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -29,31 +29,51 @@
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 
     <style>
-        /* 字體設定 */
+        /* 字體設定：全域微軟正黑體 */
         body { 
-            margin: 0; overflow: hidden; 
+            margin: 0; 
+            overflow: hidden; 
             font-family: "Microsoft JhengHei", "Heiti TC", sans-serif;
-            background-color: #2b0000; color: #fff; font-weight: bold;
+            background-color: #2b0000;
+            color: #fff;
+            font-weight: bold;
             image-rendering: pixelated;
         }
 
         /* UI 元件 */
         .pixel-box { background: #fff; border: 4px solid #000; color: #000; box-shadow: -4px 0 0 0 #000, 4px 0 0 0 #000, 0 -4px 0 0 #000, 0 4px 0 0 #000; }
         .pixel-box-dark { background: #000; border: 4px solid #fff; color: #fff; box-shadow: -4px 0 0 0 #fff, 4px 0 0 0 #fff, 0 -4px 0 0 #fff, 0 4px 0 0 #fff; }
-        .pixel-btn { border: 4px solid rgba(0,0,0,0.4); cursor: pointer; transition: transform 0.1s; box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3); font-family: "Microsoft JhengHei", sans-serif !important; }
+        .pixel-btn { 
+            border: 4px solid rgba(0,0,0,0.4); 
+            cursor: pointer; transition: transform 0.1s; 
+            box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3); 
+            font-family: "Microsoft JhengHei", sans-serif !important;
+        }
         .pixel-btn:active { transform: translateY(4px); }
         .pixel-btn-yellow { background: #facc15; border-color: #854d0e; color: black; text-shadow: none; }
         .pixel-btn-red { background: #ef4444; border-color: #7f1d1d; color: white; }
 
-        /* --- 3D 紅色流動背景 --- */
-        .retro-wrapper { position: fixed; inset: 0; z-index: -10; background: radial-gradient(circle at center, #500000 0%, #1a0000 100%); perspective: 800px; overflow: hidden; }
+        /* --- 3D 紅色流動方格背景 --- */
+        .retro-wrapper {
+            position: fixed; inset: 0; z-index: -10;
+            background: radial-gradient(circle at center, #500000 0%, #1a0000 100%);
+            perspective: 800px; overflow: hidden;
+        }
         .retro-grid-plane {
             position: absolute; bottom: -30%; left: -50%; width: 200%; height: 150%;
-            background-image: linear-gradient(rgba(255, 30, 30, 0.5) 2px, transparent 2px), linear-gradient(90deg, rgba(255, 30, 30, 0.5) 2px, transparent 2px);
-            background-size: 80px 80px; transform: rotateX(70deg); animation: grid-move 2s linear infinite;
+            background-image: 
+                linear-gradient(rgba(255, 30, 30, 0.5) 2px, transparent 2px), 
+                linear-gradient(90deg, rgba(255, 30, 30, 0.5) 2px, transparent 2px);
+            background-size: 80px 80px;
+            transform: rotateX(70deg);
+            animation: grid-move 2s linear infinite;
             box-shadow: 0 0 150px rgba(255, 0, 0, 0.5);
         }
-        .retro-horizon { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, #110000 20%, transparent 60%); z-index: -5; pointer-events: none; }
+        .retro-horizon {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #110000 20%, transparent 60%);
+            z-index: -5; pointer-events: none;
+        }
         @keyframes grid-move { 0% { background-position: 0 0; } 100% { background-position: 0 80px; } }
 
         /* Loading */
@@ -61,24 +81,26 @@
         .pixel-spinner { width: 48px; height: 48px; background: #fbbf24; animation: pixel-spin 0.8s steps(4) infinite; box-shadow: 4px 4px 0 #b45309; }
         @keyframes pixel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- 動畫 Keyframes --- */
+        /* --- 遊戲動畫 Keyframes --- */
         
-        /* 賽馬 */
+        /* 1. 賽馬 */
         @keyframes horse-gallop { 0% { transform: translateY(0); } 50% { transform: translateY(-4px); } 100% { transform: translateY(0); } }
         .horse-sprite { animation: horse-gallop 0.15s steps(2) infinite; display: inline-block; transform: scaleX(1); }
 
-        /* 拉霸 */
+        /* 2. 拉霸 */
         @keyframes reel-move { 0% { background-position: 0 0; } 100% { background-position: 0 100%; } }
-        .reel-blur { background: repeating-linear-gradient(180deg, #fff 0, #ccc 50%, #fff 100%); background-size: 100% 120px; animation: reel-move 0.1s linear infinite; filter: blur(2px); color: transparent; }
+        .reel-blur { 
+            background: repeating-linear-gradient(180deg, #fff 0, #ccc 50%, #fff 100%);
+            background-size: 100% 20px;
+            animation: reel-move 0.1s linear infinite;
+            filter: blur(2px);
+            color: transparent;
+        }
 
-        /* 瑪利歐 (跑->回->跳) */
+        /* 3. 瑪利歐 */
         @keyframes mario-phase1 { 0% { left: -10%; transform: scaleX(1); } 100% { left: 110%; transform: scaleX(1); } }
         @keyframes mario-phase2 { 0% { left: 110%; transform: scaleX(-1); } 100% { left: 50%; transform: scaleX(-1); } }
-        @keyframes mario-jump-up { 
-            0% { bottom: 20px; } 
-            50% { bottom: 200px; } /* 跳高 */
-            100% { bottom: 20px; } 
-        }
+        @keyframes mario-jump-up { 0% { bottom: 20px; } 50% { bottom: 250px; } 100% { bottom: 20px; } }
         .mario-p1 { animation: mario-phase1 3s linear forwards; }
         .mario-p2 { animation: mario-phase2 2s linear forwards; }
         .mario-jump-anim { animation: mario-jump-up 0.5s ease-out forwards; }
@@ -87,57 +109,58 @@
         @keyframes block-bump { 0% { transform: translateY(0); } 50% { transform: translateY(-40px); } 100% { transform: translateY(0); } }
         .block-bump-anim { animation: block-bump 0.3s ease-out; }
 
-        /* 射箭 */
-        @keyframes arrow-fly-in { 0% { left: -100%; } 100% { left: calc(50% - 150px); } } /* 修正箭頭位置 */
+        /* 4. 射箭 */
+        @keyframes arrow-fly-in { 0% { left: -100%; } 100% { left: calc(50% - 140px); } } 
         .arrow-anim { animation: arrow-fly-in 0.6s ease-out forwards; }
         @keyframes target-shake { 0%, 100% { transform: scale(1) translateX(-50%); } 10%, 90% { transform: scale(1.2) translateX(-55%); } 50% { transform: scale(1.1) translateX(-45%); } }
         .target-hit { animation: target-shake 0.5s ease-in-out; }
 
-        /* 足球 */
+        /* 5. 足球 */
         @keyframes ball-kick { 0% { left: -10%; transform: rotate(0deg); } 100% { left: 80%; transform: rotate(720deg); } }
         .ball-anim { animation: ball-kick 2.5s ease-out forwards; }
         .ball-bobbing { animation: block-bump 0.5s ease-in-out infinite; }
 
-        /* 炸彈 */
+        /* 6. 炸彈 */
         @keyframes bomb-pulse-grow { 0% { transform: scale(1); filter: hue-rotate(0deg); } 100% { transform: scale(5); filter: hue-rotate(180deg); } }
         .bomb-growing { animation: bomb-pulse-grow 3s ease-in forwards; }
         @keyframes explode-big { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(3); opacity: 1; background: white; } 100% { transform: scale(4); opacity: 0; } }
         .bomb-boom { animation: explode-big 0.5s ease-out forwards; }
 
-        /* 流星 (全螢幕) */
-        @keyframes meteor-cross { 
-            0% { transform: translate(120vw, -20vh) scale(0.5); opacity: 1; } 
-            100% { transform: translate(-20vw, 120vh) scale(1); opacity: 0; } 
-        }
-        .meteor-shower-item { position: absolute; top: 0; right: 0; animation: meteor-cross 1.5s linear infinite; }
+        /* 7. 流星 */
+        @keyframes meteor-cross { 0% { transform: translate(120vw, -120vh) scale(0.5); opacity: 1; } 100% { transform: translate(-100vw, 120vh) scale(1); opacity: 0; } }
+        .meteor-shower-item { position: absolute; top: 0; right: 0; animation: meteor-cross 2s linear infinite; }
         @keyframes meteor-center-crash { 0% { transform: translate(100vw, -100vh) scale(0.5); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 1; top: 50%; left: 50%; } }
         .meteor-final { position: absolute; top: 0; right: 0; animation: meteor-center-crash 0.8s ease-in forwards; }
+        @keyframes twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .twinkle-star { animation: twinkle 1s infinite; }
 
-        /* 塔羅 */
+        /* 8. 雷達 */
+        @keyframes radar-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .radar-line { animation: radar-spin 2s linear infinite; transform-origin: bottom right; }
+        @keyframes red-dot-pop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .red-dot-anim { animation: red-dot-pop 0.5s ease-out forwards; }
+
+        /* 9. 塔羅 */
         .card-container { perspective: 1000px; }
         .card-inner { width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
         .card-front, .card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 4px solid #facc15; }
         .card-front { background: #4c1d95; transform: rotateY(0deg); }
         .card-back { background: #fff; transform: rotateY(180deg); color: #000; }
         .flipped .card-inner { transform: rotateY(180deg); }
+        @keyframes shuffle { 0% { transform: translateX(0); z-index:1; } 50% { transform: translateX(100px); z-index:10; } 100% { transform: translateX(0); z-index:1; } }
+        .shuffling { animation: shuffle 0.5s ease-in-out infinite; }
 
-        /* 雷達 */
-        @keyframes radar-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .radar-line { animation: radar-spin 2s linear infinite; transform-origin: bottom right; }
-        @keyframes red-dot-pop { 0% { transform: scale(0); opacity: 0; } 50% { transform: scale(1.5); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-        .red-dot-anim { animation: red-dot-pop 0.5s ease-out forwards; }
-
-        /* 飛機 */
+        /* 10. 飛機 */
         @keyframes ship-move { 0% { left: 20%; } 50% { left: 80%; } 100% { left: 20%; } }
         .ship-moving { animation: ship-move 3s ease-in-out infinite; }
         @keyframes laser-up { 0% { height: 10px; bottom: 80px; opacity: 1; } 100% { height: 100px; bottom: 100vh; opacity: 0; } }
         .laser-fire { animation: laser-up 0.3s linear infinite; }
 
-        /* 轉盤 */
+        /* 11. 轉盤 */
         @keyframes wheel-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .wheel-rotating { animation: wheel-spin 0.2s linear infinite; }
 
-        /* 夾娃娃 */
+        /* 12. 夾娃娃 */
         @keyframes claw-drop-anim { 0% { top: 10%; } 50% { top: 60%; } 100% { top: 10%; } }
         .claw-arm-dropping { animation: claw-drop-anim 3s ease-in-out forwards; }
 
@@ -145,19 +168,14 @@
         @keyframes floatUp { 0% { transform: translateY(110vh) scale(0.8); opacity: 0; } 20% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-20vh) scale(1.1); opacity: 0; } }
         .bubble { position: absolute; bottom: -100px; animation: floatUp linear infinite; }
 
-        /* 中獎特效 */
-        @keyframes love-float { 
-            0% { transform: translateY(100%) scale(0.5); opacity: 0; } 
-            20% { opacity: 1; } 
-            100% { transform: translateY(-200%) scale(1.5); opacity: 0; } 
-        }
+        /* 中獎愛心 */
+        @keyframes love-float { 0% { transform: translateY(100%) scale(0.5); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-200%) scale(1.5); opacity: 0; } }
         .love-particle { position: absolute; animation: love-float 4s ease-out forwards; bottom: 0; font-size: 2rem; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     
-    <!-- 3D 背景 -->
     <div class="retro-wrapper">
         <div class="retro-horizon"></div>
         <div class="retro-grid-plane"></div>
@@ -181,37 +199,46 @@
         const AVATARS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🦄"];
         const removeLoading = () => { const el = document.getElementById('loading-screen'); if(el) { el.style.opacity = '0'; setTimeout(() => el.style.display = 'none', 500); }};
 
-        // --- 音效引擎 ---
+        // --- 音效引擎 (Web Audio API) ---
         const AudioManager = {
             ctx: null,
-            osc: null,
-            gain: null,
+            interval: null,
             init: function() {
                 if (!this.ctx) {
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 }
                 if (this.ctx.state === 'suspended') this.ctx.resume();
             },
-            playTension: function() {
+            // 小鼓滾奏 (Noise Burst Loop)
+            startDrumRoll: function() {
                 this.init();
-                // 產生低頻脈衝音 (模擬心跳/緊張)
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.linearRampToValueAtTime(800, now + 5); // 5秒內頻率升高
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.linearRampToValueAtTime(0.0, now + 5); // 漸弱
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(now + 5);
+                if (this.interval) clearInterval(this.interval);
+                this.interval = setInterval(() => {
+                    const t = this.ctx.currentTime;
+                    const noise = this.ctx.createBufferSource();
+                    const buffer = this.ctx.createBuffer(1, 44100 * 0.05, 44100);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+                    noise.buffer = buffer;
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.3, t);
+                    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
+                    noise.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    noise.start(t);
+                }, 80); // 80ms 間隔
+            },
+            stopDrumRoll: function() {
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
             },
             playWin: function() {
+                this.stopDrumRoll();
                 this.init();
                 const now = this.ctx.currentTime;
-                // 勝利和弦 C-E-G-C
+                // Victory Chord
                 [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
                     const osc = this.ctx.createOscillator();
                     const gain = this.ctx.createGain();
@@ -277,15 +304,16 @@
             // 動畫狀態
             const [horses, setHorses] = useState([]);
             const [slotStops, setSlotStops] = useState([false, false, false]);
-            const [marioPhase, setMarioPhase] = useState(0); // 0:wait, 1:runR, 2:runL, 3:wait, 4:jump
+            const [marioPhase, setMarioPhase] = useState(0); 
             const [shooter, setShooter] = useState({x: 50, laser: false, boom: false});
             const [archery, setArchery] = useState({shoot: false, hit: false});
             const [meteorStage, setMeteorStage] = useState(0); 
-            const [cardFlipState, setCardFlipState] = useState([0,0,0]); // 0:背 1:鬼 2:禮物
+            const [cardFlipState, setCardFlipState] = useState([0,0,0]); 
             const [radarDot, setRadarDot] = useState(false);
             const [soccer, setSoccer] = useState({kick: false, goal: false});
             const [bomb, setBomb] = useState({size: 1, boom: false});
             const [wheelSpin, setWheelSpin] = useState(true);
+            const [clawState, setClawState] = useState('idle');
 
             // 格式化顯示 (僅顯示名字)
             const getDisplayString = (player) => {
@@ -296,8 +324,8 @@
             useEffect(() => {
                 let interval;
                 if (isRolling) {
-                    // --- 初始化狀態 & 音效 ---
-                    setMarioPhase(1); // 開始跑
+                    // --- 初始化狀態 ---
+                    setMarioPhase(1); 
                     setSlotStops([false, false, false]);
                     setShooter({x: 50, laser: false, boom: false}); 
                     setArchery({shoot: false, hit: false});
@@ -307,6 +335,7 @@
                     setSoccer({kick: false, goal: false});
                     setBomb({size: 1, boom: false});
                     setWheelSpin(true);
+                    setClawState('moving');
 
                     if (mode === 'race') {
                         const racers = candidates.slice(0, 5).map((p, idx) => ({...p, displayName: p.name, progress: 0}));
@@ -323,10 +352,9 @@
                         interval = setInterval(() => setBomb(prev => ({...prev, size: Math.min(8, prev.size + 0.05)})), 100);
                     }
                     else if (mode === 'radar') {
-                        // 旋轉途中紅點出現
                         setTimeout(() => setRadarDot(true), 2000);
                     }
-                    else if (!['slots', 'retro', 'magic', 'adventure', 'meteor'].includes(mode)) {
+                    else if (!['slots', 'retro', 'magic', 'adventure', 'meteor', 'claw'].includes(mode)) {
                         interval = setInterval(() => {
                             const randomIdx = Math.floor(Math.random() * candidates.length);
                             setDisplay(`No.${randomIdx + 1}`);
@@ -334,7 +362,6 @@
                     }
                 } 
                 else if (targetName) {
-                    // --- 揭曉動畫 (時間軸) ---
                     setDisplay(targetName);
                     
                     if (mode === 'race' && winnerObj) {
@@ -346,9 +373,9 @@
                         setTimeout(() => setSlotStops([true, true, true]), 2500);
                     }
                     if (mode === 'adventure') {
-                        setMarioPhase(2); // 往回跑
-                        setTimeout(() => setMarioPhase(3), 2000); // 停在中間
-                        setTimeout(() => setMarioPhase(4), 2100); // 跳躍頂磚
+                        setMarioPhase(2); 
+                        setTimeout(() => setMarioPhase(3), 1500); 
+                        setTimeout(() => setMarioPhase(4), 1600); 
                     }
                     if (mode === 'shooter') {
                         setShooter(prev => ({...prev, x: 50, laser: true}));
@@ -381,6 +408,9 @@
                     if (mode === 'retro') {
                         setWheelSpin(false);
                     }
+                    if (mode === 'claw') {
+                        setClawState('dropping');
+                    }
                 }
                 return () => clearInterval(interval);
             }, [isRolling, targetName, mode, winnerObj, candidates]);
@@ -394,19 +424,12 @@
                          <div className={`w-24 h-24 bg-yellow-600 border-4 border-black flex items-center justify-center text-white font-bold text-5xl ${marioPhase===4?'block-bump-anim':''}`}>?</div>
                      </div>
                      <div className="h-4 bg-red-900 border-t-4 border-black w-full relative z-10"></div>
-                     
                      <div className={`absolute bottom-[20px] text-9xl 
                         ${marioPhase===1 ? 'mario-p1' : ''} 
                         ${marioPhase===2 ? 'mario-p2' : ''} 
                         ${marioPhase===4 ? 'mario-jump-anim left-1/2 -translate-x-1/2' : ''}`}
-                        style={{left: marioPhase===0?'-10%': marioPhase===3?'50%': undefined }}
-                     >
-                         <div className={`mario-run-sprite ${marioPhase<=2?'mario-running':''}`}>🚶🏼‍➡️</div>
-                     </div>
-
-                     {!isRolling && targetName && marioPhase===4 && (
-                        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 animate__animated animate__bounceIn pixel-box p-4 text-3xl font-bold text-black whitespace-nowrap">{getDisplayString(winnerObj)}</div>
-                     )}
+                        style={{left: marioPhase===0?'-10%': marioPhase===3?'50%': undefined }}>🚶🏼‍➡️</div>
+                     {!isRolling && targetName && marioPhase===4 && <div className="absolute top-[10%] left-1/2 -translate-x-1/2 animate__animated animate__bounceIn pixel-box p-4 text-3xl font-bold text-black whitespace-nowrap">{getDisplayString(winnerObj)}</div>}
                 </div>
             );
 
@@ -480,21 +503,13 @@
             // 6. 流星雨 (Meteor)
             if (mode === 'meteor') return (
                 <div className="w-full h-full relative overflow-hidden">
-                    {/* 背景流星雨 (全螢幕) */}
                     {isRolling && Array.from({length:15}).map((_,i) => {
                         const icons = ['🌟','⭐️','✨','🌈'];
                         return <div key={i} className="absolute text-4xl meteor-shower-item twinkle-star" 
                              style={{left: `${Math.random()*100}%`, top: '-10%', animationDelay: `${Math.random()}s`, animationDuration: `${0.8+Math.random()}s`}}>{icons[i%4]}</div>
                     })}
-                    {meteorStage >= 1 && (
-                        <div className={`absolute text-[150px] meteor-final ${meteorStage===2?'hidden':''}`}>☄️</div>
-                    )}
-                    {meteorStage === 2 && (
-                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center animate__animated animate__zoomIn">
-                             <div className="text-[150px] mb-4">💥</div>
-                             <div className="pixel-box px-8 py-4 text-5xl text-black font-bold">{getDisplayString(winnerObj)}</div>
-                        </div>
-                    )}
+                    {meteorStage >= 1 && <div className={`absolute text-[150px] meteor-final ${meteorStage===2?'hidden':''}`}>☄️</div>}
+                    {meteorStage === 2 && <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center animate__animated animate__zoomIn"><div className="text-[150px] mb-4">💥</div><div className="pixel-box px-8 py-4 text-5xl text-black font-bold">{getDisplayString(winnerObj)}</div></div>}
                 </div>
             );
 
@@ -569,10 +584,27 @@
                 </div>
             );
 
+            // 12. 夾娃娃 (Claw)
+            if (mode === 'claw') return (
+                <div className="relative w-[400px] h-[500px] border-8 border-pink-500 bg-black/60 mx-auto pixel-box-dark overflow-hidden">
+                    <div className={`absolute w-2 bg-gray-400 h-10 top-0 left-1/2 -translate-x-1/2 ${clawState==='moving'?'claw-arm-moving':''} ${clawState==='dropping'?'claw-arm-dropping':''}`} style={{zIndex:20}}>
+                        <div className="absolute bottom-0 -left-6 text-7xl">👾</div>
+                    </div>
+                    <div className="absolute bottom-0 w-full h-1/2 flex flex-wrap content-end justify-center p-4 gap-2 opacity-80">
+                        {candidates.slice(0, 15).map((c,i) => <div key={i} className="text-4xl animate-bounce" style={{animationDelay:`${i*0.1}s`}}>{c.avatar}</div>)}
+                    </div>
+                    {!isRolling && targetName && clawState === 'dropping' && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 text-center animate__animated animate__zoomIn" style={{animationDelay:'3s'}}>
+                            <div className="text-8xl mb-2">{winnerObj?.avatar}</div>
+                            <div className="bg-white text-pink-600 px-4 py-2 text-xl border-4 border-pink-500 font-bold">{getDisplayString(winnerObj)}</div>
+                        </div>
+                    )}
+                </div>
+            );
+
             return null;
         };
 
-        // 浮動表情符號
         const FloatingHearts = () => {
             const icons = ["💕", "💘", "😇", "🥰", "🤪"];
             const items = useMemo(() => Array.from({length: 20}).map((_,i)=>({
@@ -676,7 +708,7 @@
             const MODES = [
                 { id: 'slots', name: '拉霸機' }, { id: 'race', name: '賽馬' }, { id: 'meteor', name: '流星雨' }, { id: 'archery', name: '后羿射日' },
                 { id: 'adventure', name: '瑪利歐' }, { id: 'shooter', name: '飛機射擊' }, { id: 'retro', name: '幸運轉盤' }, { id: 'magic', name: '塔羅翻牌' },
-                { id: 'radar', name: '雷達掃描' }, { id: 'soccer', name: '足球射門' }, { id: 'bomb', name: '炸彈倒數' }
+                { id: 'radar', name: '雷達掃描' }, { id: 'soccer', name: '足球射門' }, { id: 'bomb', name: '炸彈倒數' }, { id: 'claw', name: '夾娃娃機' }
             ];
             const [unusedModes, setUnusedModes] = useState([...MODES.map(m => m.id)]);
 
@@ -701,7 +733,10 @@
                 setIsDrawing(true);
                 emit('update_game_status', { status: { status: 'playing' } });
 
-                const duration = (mode === 'race' || mode === 'adventure' || mode === 'archery') ? 6000 : 4000;
+                // Start Drum Roll
+                AudioManager.playTension();
+
+                const duration = (mode === 'race' || mode === 'adventure' || mode === 'archery' || mode === 'claw') ? 6000 : 4000;
                 
                 setDisplayState({ rolling: true, winner: null, text: "ROLLING" });
 
@@ -723,25 +758,27 @@
                     setDisplayState({ rolling: false, winner: w, text: `No.${allPlayers.findIndex(p => p.id === w.id)+1} - ${w.name}` });
                     confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                     
-                    // 等待動畫揭曉
-                    await new Promise(r => setTimeout(r, 2000)); 
+                    // Stop tension
+                    AudioManager.stopDrumRoll();
+
+                    await new Promise(r => setTimeout(r, 3000)); 
                     
-                    // 彈窗與廣播 (觸發愛心與音效)
+                    // Win Sound & Speak
                     AudioManager.playWin();
                     AudioManager.speak(`恭喜 ${w.name} 中獎`);
 
+                    // 彈窗
                     setDisplayState(prev => ({ ...prev, showModal: true }));
                     emit('update_game_status', { status: { status: 'result', winnerName: w.name, winnerId: w.id } });
 
                     // 等待手動關閉
                     await new Promise(resolve => {
                          const check = setInterval(() => {
-                             if (!document.getElementById('modal-open')) { // Hack: check modal removal
+                             if (!document.getElementById('modal-open')) {
                                  clearInterval(check);
                                  resolve();
                              }
                          }, 500);
-                         // 這裡無法直接等待，所以我們設定一個 timeout 作為備案
                          setTimeout(() => { clearInterval(check); resolve(); }, 15000); 
                     });
                     
@@ -755,7 +792,6 @@
                 <div className="h-screen bg-gray-900 flex flex-col relative overflow-hidden">
                     <div className="retro-grid-mask"></div><div className="retro-grid-container"><div className="retro-grid"></div></div>
 
-                    {/* 得獎彈窗 (含關閉按鈕，點擊後會讓 Loop 繼續) */}
                     {displayState.showModal && displayState.winner && (
                         <div id="modal-open" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 animate__animated animate__fadeIn">
                             <FloatingHearts />
