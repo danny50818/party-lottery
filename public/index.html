@@ -209,6 +209,9 @@
             <div class="join-counter">已加入人數: <span id="join-count">0</span></div>
             
             <button class="btn-main" onclick="enterGame()">進入抽獎主控台</button>
+            <div style="color: #aaa; margin-top:10px; font-size: 0.9rem;">
+                大螢幕模式
+            </div>
         </div>
     </div>
 
@@ -270,10 +273,13 @@
         const floatersContainer = document.getElementById('floaters-container');
         const drawBtn = document.getElementById('draw-btn');
 
-        // --- 1. 初始化邏輯 ---
+        // --- 1. 初始化邏輯 (修正重點) ---
         
-        // 自動生成 QR Code (使用當前網址)
-        const currentUrl = window.location.href; // 會抓取例如 https://xxx.onrender.com/
+        // ★★★ 關鍵修改：只使用 origin (根網域)，不包含 /screen ★★★
+        // 這樣手機掃碼時，會進入 https://xxx.onrender.com/ (手機版頁面)
+        // 而不是進入 https://xxx.onrender.com/screen (大螢幕頁面)
+        const currentUrl = window.location.origin; 
+        
         // 使用 Google Chart API 生成 QR Code
         document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentUrl)}`;
 
