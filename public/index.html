@@ -26,32 +26,6 @@
             align-items: center;
         }
 
-        /* --- 共用按鈕與輸入框 --- */
-        .btn-main {
-            background: linear-gradient(135deg, #ffeb3b 0%, #fbc02d 100%);
-            color: #b71c1c; border: none; padding: 15px 40px;
-            font-size: 1.5rem; font-weight: bold; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 5px 0 #f57f17, 0 5px 15px rgba(0,0,0,0.5);
-            transition: transform 0.1s; min-width: 180px;
-        }
-        .btn-main:active { transform: translateY(4px); box-shadow: 0 1px 0 #f57f17; }
-        .btn-main:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
-
-        .btn-small {
-            background: #333; color: #ccc; border: 1px solid #555;
-            padding: 8px 15px; border-radius: 8px; font-size: 0.9rem; cursor: pointer;
-        }
-        .btn-small:hover { background: #444; color: white; }
-
-        .input-group {
-            display: flex; align-items: center; gap: 10px;
-            background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; border: 1px solid #444;
-        }
-        input[type="number"] {
-            background: transparent; border: none; color: var-accent;
-            font-size: 1.2rem; width: 50px; text-align: center; font-weight: bold; outline: none;
-        }
-
         /* --- 1. QR Code 登入頁 --- */
         #login-page {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -67,6 +41,21 @@
         @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .join-counter { font-size: 2.5rem; color: var-accent; margin: 20px 0; font-weight: bold; }
 
+        .btn-main {
+            background: linear-gradient(135deg, #ffeb3b 0%, #fbc02d 100%);
+            color: #b71c1c; border: none; padding: 15px 40px; font-size: 1.5rem; font-weight: bold;
+            border-radius: 50px; cursor: pointer; box-shadow: 0 5px 0 #f57f17; transition: transform 0.1s;
+        }
+        .btn-main:active { transform: translateY(4px); box-shadow: 0 1px 0 #f57f17; }
+        .btn-main:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
+        
+        .btn-small {
+            background: #333; color: #ccc; border: 1px solid #555; padding: 8px 15px; border-radius: 8px; cursor: pointer;
+        }
+
+        .input-group { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; }
+        input[type="number"] { background: transparent; border: none; color: var-accent; font-size: 1.2rem; width: 50px; text-align: center; outline: none; }
+
         /* --- 2. 抽獎主畫面 --- */
         #game-page {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -74,17 +63,13 @@
         }
         #game-page.active { display: flex; opacity: 1; }
 
-        .stage-container {
-            flex: 1; display: flex; justify-content: center; align-items: center;
-            position: relative; perspective: 1000px;
-        }
+        .stage-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; perspective: 1000px; }
         .slot-machine-frame {
             width: 90%; max-width: 800px; height: 350px;
             background: linear-gradient(to bottom, #333 0%, #000 20%, #000 80%, #333 100%);
             border: 4px solid var-accent; border-radius: 15px;
             box-shadow: 0 0 20px var-accent, inset 0 0 50px rgba(0,0,0,0.8);
-            overflow: hidden; display: flex; justify-content: center; align-items: center;
-            position: relative;
+            overflow: hidden; display: flex; justify-content: center; align-items: center; position: relative;
         }
         .slot-machine-frame::after {
             content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
@@ -93,130 +78,89 @@
         }
         #game-canvas { width: 100%; height: 100%; }
 
-        /* 控制面板更新 */
         .control-panel {
             width: 100%; background: var-panel-bg; padding: 20px;
-            display: flex; flex-direction: column; align-items: center; gap: 15px;
-            z-index: 20; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); border-top: 2px solid #b71c1c;
-        }
-        .panel-row {
-            display: flex; align-items: center; gap: 20px; flex-wrap: wrap; justify-content: center;
+            display: flex; justify-content: center; align-items: center; gap: 20px; z-index: 20; border-top: 2px solid #b71c1c; flex-wrap: wrap;
         }
 
-        /* --- 3. 彈窗 (得獎 & 管理) --- */
-        .modal-overlay {
+        /* --- 3. 彈窗 --- */
+        #winner-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
-            z-index: 2000; display: none;
-            align-items: center; justify-content: center; flex-direction: column;
+            z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center;
             opacity: 0; transition: opacity 0.5s ease;
         }
-        .modal-overlay.active { display: flex; opacity: 1; }
-
-        /* 得獎卡片 */
+        #winner-modal.active { display: flex; opacity: 1; }
         .winner-card {
             background: radial-gradient(circle, #fff 0%, #ffe0b2 100%);
             padding: 40px 80px; border-radius: 30px; text-align: center;
             box-shadow: 0 0 100px var-accent; border: 5px solid var-accent;
-            transform: scale(0.5); animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-            position: relative; z-index: 10;
+            transform: scale(0.5); animation: popIn 0.8s forwards;
         }
         @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .winner-title { font-size: 2rem; color: #d84315; margin: 0; font-weight: bold; letter-spacing: 5px; }
-        .winner-name-big {
-            font-size: 6rem; font-weight: 900; color: #b71c1c; margin: 20px 0;
-            text-shadow: 2px 2px 0px #fff, 5px 5px 0px rgba(0,0,0,0.2); white-space: nowrap;
-        }
+        .winner-name-big { font-size: 6rem; font-weight: 900; color: #b71c1c; margin: 20px 0; text-shadow: 2px 2px 0px #fff; white-space: nowrap; }
 
-        /* 管理名單彈窗 */
-        .manage-box {
-            background: #222; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px;
-            border: 1px solid var-accent; display: flex; flex-direction: column; height: 70vh;
-        }
-        .user-list-container {
-            flex: 1; overflow-y: auto; background: #111; margin: 15px 0; border: 1px solid #444;
-        }
-        .user-row {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 15px; border-bottom: 1px solid #333;
-        }
-        .user-row:last-child { border-bottom: none; }
-        .user-name { font-size: 1.1rem; }
+        /* 名單管理 */
+        #manage-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        #manage-modal.active { display: flex; }
+        .manage-box { background: #222; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; height: 70vh; display: flex; flex-direction: column; border: 1px solid var-accent; }
+        .user-list-container { flex: 1; overflow-y: auto; background: #111; margin: 15px 0; border: 1px solid #444; }
+        .user-row { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
         .excluded-text { text-decoration: line-through; color: #666; }
         
-        .btn-toggle {
-            padding: 5px 10px; font-size: 0.8rem; cursor: pointer; border-radius: 5px; border: none;
-        }
-        .btn-exclude { background: #c62828; color: white; }
-        .btn-include { background: #333; color: #aaa; }
-
-        /* 漂浮動畫 & 禮炮 */
-        .floater { position: absolute; font-size: 3rem; user-select: none; pointer-events: none; opacity: 0.8; animation: floatUp linear infinite; }
-        @keyframes floatUp { 0% { transform: translateY(100vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(-100px) rotate(360deg); opacity: 0; } }
+        .floater { position: absolute; font-size: 3rem; animation: floatUp linear infinite; pointer-events: none; }
+        @keyframes floatUp { 0% { transform: translateY(100vh); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
         #confetti-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1500; }
     </style>
 </head>
 <body>
 
-    <!-- 1. QR Code 頁 -->
+    <!-- QR 頁 -->
     <div id="login-page">
         <div class="qr-box">
-            <h2 style="color:var-accent; margin-top:0;">掃描加入活動</h2>
-            <img id="qr-img" src="" alt="QR" style="background:#fff; padding:10px; border-radius:10px; width:250px; height:250px;">
+            <h2 style="color:var-accent;">掃描加入活動</h2>
+            <img id="qr-img" src="" style="background:#fff; padding:10px; border-radius:10px; width:250px; height:250px;">
             <div class="join-counter">已加入: <span id="join-count">0</span></div>
             <button class="btn-main" onclick="enterGame()">進入主控台</button>
-            <div style="color:#aaa; margin-top:10px; font-size:0.9rem;">大螢幕模式</div>
+            <div style="color:#aaa; margin-top:10px;">大螢幕模式</div>
         </div>
     </div>
 
-    <!-- 2. 主控台 -->
+    <!-- 主控台 -->
     <div id="game-page">
         <div class="stage-container">
             <div class="slot-machine-frame">
                 <canvas id="game-canvas"></canvas>
             </div>
         </div>
-
         <div class="control-panel">
-            <div class="panel-row">
-                <button id="draw-btn" class="btn-main" onclick="startMultiDraw()">開始抽獎</button>
+            <button id="draw-btn" class="btn-main" onclick="startMultiDraw()">開始抽獎</button>
+            <div class="input-group">
+                <label>人數:</label>
+                <input type="number" id="draw-count" value="1" min="1" max="50">
             </div>
-            <div class="panel-row">
-                <div class="input-group">
-                    <label>人數:</label>
-                    <input type="number" id="draw-count" value="1" min="1" max="50">
-                </div>
-                <button class="btn-small" onclick="openManageModal()">名單管理</button>
-                <button class="btn-small" onclick="resetEvent()">重置活動</button>
-                <div style="color:#aaa; font-size:0.9rem;">參加: <span id="game-join-count">0</span></div>
-            </div>
+            <button class="btn-small" onclick="openManageModal()">管理名單</button>
+            <button class="btn-small" onclick="resetEvent()">重置</button>
+            <div style="color:#aaa;">參加: <span id="game-join-count">0</span></div>
         </div>
     </div>
 
-    <!-- 3. 得獎彈窗 -->
-    <div id="winner-modal" class="modal-overlay" onclick="closeWinnerModal()">
+    <!-- 得獎彈窗 -->
+    <div id="winner-modal" onclick="closeWinnerModal()">
         <div id="floaters-container"></div>
         <div class="winner-card" onclick="event.stopPropagation()">
             <div class="winner-title">🎉 CONGRATULATIONS 🎉</div>
             <div class="winner-name-big" id="modal-winner-name">WINNER</div>
-            <div style="font-size:1.2rem; color:#666;">恭喜獲得年度大獎</div>
-            <div style="margin-top:20px;">
-                <button class="btn-main" onclick="closeWinnerModal()">繼續</button>
-            </div>
+            <button class="btn-main" onclick="closeWinnerModal()">繼續</button>
         </div>
     </div>
 
-    <!-- 4. 名單管理彈窗 -->
-    <div id="manage-modal" class="modal-overlay">
+    <!-- 管理彈窗 -->
+    <div id="manage-modal" onclick="closeManageModal()">
         <div class="manage-box" onclick="event.stopPropagation()">
-            <h3 style="color:var-accent; margin:0;">名單管理</h3>
-            <p style="color:#888; font-size:0.9rem;">勾選「剔除」以暫時排除在抽獎外</p>
-            <div class="user-list-container" id="manage-list">
-                <!-- JS 生成 -->
-            </div>
-            <div style="text-align:right;">
-                <button class="btn-main" style="padding:10px 30px; font-size:1rem; min-width:auto;" onclick="closeManageModal()">完成</button>
-            </div>
+            <h3 style="color:var-accent;">名單管理</h3>
+            <div class="user-list-container" id="manage-list"></div>
+            <div style="text-align:right;"><button class="btn-main" style="padding:10px 30px; font-size:1rem;" onclick="closeManageModal()">完成</button></div>
         </div>
     </div>
 
@@ -225,11 +169,10 @@
     <script>
         const socket = io();
         let users = [];
-        let localExcluded = new Set(); // 本地暫存的剔除名單 (用於顯示和發送)
+        let winners = []; // 本地暫存已中獎者 (用於視覺過濾)
+        let localExcluded = new Set();
         let isDrawing = false;
-        
-        // 視覺變數
-        let animState = 'idle';
+        let animState = 'idle'; 
         let scrollY = 0;
 
         // DOM
@@ -237,187 +180,86 @@
         const gamePage = document.getElementById('game-page');
         const joinCountEl = document.getElementById('join-count');
         const gameJoinCountEl = document.getElementById('game-join-count');
-        
-        // QR Code
-        const currentUrl = window.location.origin;
-        document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentUrl)}`;
+        const winnerModal = document.getElementById('winner-modal');
+        const modalWinnerName = document.getElementById('modal-winner-name');
+        const floatersContainer = document.getElementById('floaters-container');
+        const drawBtn = document.getElementById('draw-btn');
 
-        // --- Socket ---
-        socket.on('connect', () => {
-            console.log("Connected");
-            socket.emit('admin_init');
+        // ★★★ 修正 QR Code 指向 /mobile.html ★★★
+        // 這樣掃描後會明確進入手機版頁面
+        const mobileUrl = window.location.origin + "/mobile.html";
+        document.getElementById('qr-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(mobileUrl)}`;
+
+        // Socket
+        socket.on('connect', () => { socket.emit('admin_init'); });
+        
+        socket.on('update_user_list', (u) => { 
+            users = u; updateCounters(); 
+            if(document.getElementById('manage-modal').classList.contains('active')) renderManageList();
         });
 
-        socket.on('update_user_list', (serverUsers) => {
-            users = serverUsers;
-            updateCounters();
-            if(document.getElementById('manage-modal').classList.contains('active')) {
-                renderManageList();
-            }
+        socket.on('update_winners', (w) => {
+            winners = w; // 同步中獎者
         });
 
         socket.on('draw_result', (data) => {
+            winners.push(data.winnerName); // 本地也加入，確保視覺立即移除
             stopRollingAndShowWinner(data.winnerName);
         });
 
-        socket.on('admin_draw_error', (msg) => {
-            alert(msg);
-            isDrawing = false;
-            resetUIState();
-        });
+        socket.on('admin_draw_error', (msg) => { alert(msg); isDrawing=false; resetUI(); });
+        socket.on('event_reset', () => location.reload());
 
-        socket.on('event_reset', () => {
-            location.reload();
-        });
-
-        // --- 抽獎邏輯 (支援多重抽) ---
-        
-        // 用來控制多重抽獎的 Promise Resolver
-        let modalCloseResolver = null;
-
+        // 抽獎流程
+        let modalResolver = null;
         async function startMultiDraw() {
-            if (users.length === 0) { alert("無人加入"); return; }
-            if (isDrawing) return;
+            // 先過濾出有效人數
+            const validCount = users.filter(u => !winners.includes(u) && !localExcluded.has(u)).length;
 
-            const countInput = document.getElementById('draw-count');
-            const count = parseInt(countInput.value) || 1;
-
-            isDrawing = true;
-            document.getElementById('draw-btn').disabled = true;
-
-            for (let i = 0; i < count; i++) {
-                // 更新按鈕文字
-                document.getElementById('draw-btn').textContent = `抽獎中 (${i+1}/${count})`;
-                
-                // 1. 執行單次抽獎
-                await performSingleDraw();
-
-                // 2. 等待彈窗關閉 (使用者點擊「繼續」)
-                await new Promise(resolve => { modalCloseResolver = resolve; });
-                
-                // 3. 檢查是否還有人可以抽 (避免人數不足報錯)
-                // 這裡簡單延遲一下再繼續
-                await new Promise(r => setTimeout(r, 500));
+            if(validCount === 0) { alert("無有效參加者(可能都已中獎或被剔除)"); return; }
+            if(isDrawing) return;
+            
+            const countInput = document.getElementById('draw-count').value;
+            let count = parseInt(countInput) || 1;
+            
+            // 防止輸入大於剩餘人數
+            if (count > validCount) {
+                count = validCount;
+                alert(`剩餘有效人數僅剩 ${validCount} 人，將抽出 ${validCount} 人`);
             }
 
-            // 全部結束
-            resetUIState();
+            isDrawing=true; drawBtn.disabled=true;
+            
+            for(let i=0; i<count; i++) {
+                drawBtn.textContent = `抽獎中 (${i+1}/${count})`;
+                await new Promise(resolve => {
+                    socket.emit('admin_start_rolling');
+                    startRollingAnim();
+                    // 延遲發送抽獎請求
+                    setTimeout(() => { socket.emit('admin_perform_draw'); resolve(); }, 3500);
+                });
+                await new Promise(r => modalResolver = r); // 等彈窗關閉
+                await new Promise(r => setTimeout(r, 500));
+            }
+            resetUI();
             speak("抽獎環節結束");
         }
 
-        function performSingleDraw() {
-            return new Promise((resolve) => {
-                // 通知 Server 開始滾動
-                socket.emit('admin_start_rolling');
-                startRollingAnim();
+        function resetUI() { isDrawing=false; drawBtn.disabled=false; drawBtn.textContent="開始抽獎"; animState='idle'; }
+        function resetEvent() { if(confirm("確定重置?")) socket.emit('admin_reset'); }
 
-                // 3.5秒後請求結果
-                setTimeout(() => {
-                    socket.emit('admin_perform_draw');
-                    // 注意：這裡不 resolve，要等到收到 draw_result 顯示彈窗後，resolve 交給彈窗關閉邏輯
-                    resolve(); 
-                }, 3500);
-            });
-        }
-
-        function resetUIState() {
-            isDrawing = false;
-            document.getElementById('draw-btn').disabled = false;
-            document.getElementById('draw-btn').textContent = "開始抽獎";
-            animState = 'idle';
-        }
-
-        // --- 彈窗控制 ---
-        
+        // 彈窗
         function stopRollingAndShowWinner(name) {
-            animState = 'idle';
-            document.getElementById('modal-winner-name').textContent = name;
-            document.getElementById('winner-modal').classList.add('active');
-            playWinSound();
-            speak("恭喜 " + name);
-            createFloaters();
-            fireConfetti();
+            animState='idle'; modalWinnerName.textContent=name;
+            winnerModal.classList.add('active');
+            playWinSound(); speak("恭喜 "+name); createFloaters(); fireConfetti();
         }
-
         function closeWinnerModal() {
-            document.getElementById('winner-modal').classList.remove('active');
-            document.getElementById('floaters-container').innerHTML = '';
-            
-            // 如果是在多重抽獎循環中，通知可以繼續了
-            if (modalCloseResolver) {
-                modalCloseResolver();
-                modalCloseResolver = null;
-            }
+            winnerModal.classList.remove('active'); floatersContainer.innerHTML='';
+            if(modalResolver) { modalResolver(); modalResolver=null; } else { resetUI(); }
         }
 
-        // --- 名單管理邏輯 ---
-
-        function openManageModal() {
-            document.getElementById('manage-modal').classList.add('active');
-            renderManageList();
-        }
-
-        function closeManageModal() {
-            document.getElementById('manage-modal').classList.remove('active');
-        }
-
-        function renderManageList() {
-            const listEl = document.getElementById('manage-list');
-            listEl.innerHTML = '';
-            
-            if (users.length === 0) {
-                listEl.innerHTML = '<div style="padding:20px; color:#666; text-align:center;">尚無參加者</div>';
-                return;
-            }
-
-            users.forEach(user => {
-                const isExcluded = localExcluded.has(user);
-                const row = document.createElement('div');
-                row.className = 'user-row';
-                row.innerHTML = `
-                    <span class="user-name ${isExcluded ? 'excluded-text' : ''}">${user}</span>
-                    <button class="btn-toggle ${isExcluded ? 'btn-include' : 'btn-exclude'}" 
-                            onclick="toggleExclude('${user}')">
-                        ${isExcluded ? '恢復' : '剔除'}
-                    </button>
-                `;
-                listEl.appendChild(row);
-            });
-        }
-
-        function toggleExclude(name) {
-            if (localExcluded.has(name)) {
-                localExcluded.delete(name);
-            } else {
-                localExcluded.add(name);
-            }
-            // 通知 Server 更新 (Server 端維護一份 excludedNames)
-            socket.emit('admin_toggle_exclude', name);
-            // 重新渲染列表
-            renderManageList();
-        }
-
-        // --- 基礎介面 ---
-        function updateCounters() {
-            joinCountEl.textContent = users.length;
-            gameJoinCountEl.textContent = users.length;
-        }
-
-        function enterGame() {
-            loginPage.style.opacity = '0';
-            setTimeout(() => {
-                loginPage.style.display = 'none';
-                gamePage.classList.add('active');
-                initAudio();
-                initGameVisuals();
-            }, 500);
-        }
-
-        function resetEvent() {
-            if(confirm("確定重置？將清空所有名單")) socket.emit('admin_reset');
-        }
-
-        // --- 視覺 (Canvas) ---
+        // 視覺引擎 (Canvas)
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         function initGameVisuals() { resizeCanvas(); window.addEventListener('resize', resizeCanvas); drawLoop(); }
@@ -425,15 +267,15 @@
         
         function drawLoop() {
             ctx.clearRect(0,0,canvas.width,canvas.height);
-            const cx = canvas.width/2; const cy = canvas.height/2;
-            
-            // 過濾掉被剔除的人，只顯示有效名單
-            const validUsers = users.filter(u => !localExcluded.has(u));
-            const displayList = validUsers.length > 0 ? validUsers : ["等待中..."];
+            const cx=canvas.width/2; const cy=canvas.height/2;
 
-            if (animState === 'idle') {
-                const t = Date.now()*0.001;
-                ctx.textAlign='center'; ctx.textBaseline='middle';
+            // ★★★ 視覺過濾：排除已中獎者 & 被剔除者 ★★★
+            // 這樣畫面上的人會越來越少
+            const validUsers = users.filter(u => !winners.includes(u) && !localExcluded.has(u));
+            const displayList = validUsers.length > 0 ? validUsers : ["等待加入..."];
+
+            if(animState==='idle') {
+                const t=Date.now()*0.001; ctx.textAlign='center'; ctx.textBaseline='middle';
                 for(let i=0; i<5; i++){
                     const idx = (Math.floor(t)+i)%displayList.length;
                     const yOff = Math.sin(t+i)*60;
@@ -441,16 +283,13 @@
                     ctx.font='bold 30px "Noto Sans TC"';
                     if(displayList[idx]) ctx.fillText(displayList[idx], cx, cy+(i-2)*50+yOff);
                 }
-            } else if (animState === 'rolling') {
-                scrollY += 60;
-                const itemH = 100;
-                ctx.textAlign='center'; ctx.textBaseline='middle';
-                ctx.font='bold 50px "Noto Sans TC"';
+            } else if(animState==='rolling') {
+                scrollY+=60; const itemH=100; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font='bold 50px "Noto Sans TC"';
                 for(let i=-2; i<=2; i++){
-                    const idx = Math.floor(scrollY/itemH)+i;
-                    const safeIdx = ((idx%displayList.length)+displayList.length)%displayList.length;
-                    const y = cy+(i*itemH)+(scrollY%itemH);
-                    const alpha = Math.max(0, 1-Math.abs(y-cy)/250);
+                    const idx=Math.floor(scrollY/itemH)+i;
+                    const safeIdx=((idx%displayList.length)+displayList.length)%displayList.length;
+                    const y=cy+(i*itemH)+(scrollY%itemH);
+                    const alpha=Math.max(0, 1-Math.abs(y-cy)/250);
                     ctx.fillStyle=`rgba(255,235,59,${alpha})`;
                     if(displayList[safeIdx]) ctx.fillText(displayList[safeIdx], cx, y);
                 }
@@ -459,60 +298,45 @@
         }
 
         function startRollingAnim() {
-            animState = 'rolling';
-            let duration = 3500; let start = Date.now();
-            const soundLoop = () => {
+            animState='rolling'; let d=3500; let s=Date.now();
+            const loop=()=>{
                 if(animState!=='rolling') return;
-                let prog = (Date.now()-start)/duration;
-                if(prog<1) {
-                    playTickSound(300+prog*500);
-                    setTimeout(soundLoop, Math.max(30, 100*(1-prog*0.8)));
-                }
-            }; soundLoop();
+                let p=(Date.now()-s)/d;
+                if(p<1){ playTick(300+p*500); setTimeout(loop, Math.max(30,100*(1-p*0.8))); }
+            }; loop();
         }
 
-        // --- 音效與特效 ---
-        let audioCtx;
-        function initAudio() { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
-        function playTickSound(p) {
-            if(!audioCtx) return; const o=audioCtx.createOscillator(); const g=audioCtx.createGain();
-            o.type='square'; o.frequency.value=p; g.gain.setValueAtTime(0.1,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.05);
-            o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.06);
-        }
-        function playWinSound() {
-            if(!audioCtx) return; const now=audioCtx.currentTime;
-            [523,659,783,1046].forEach((f,i)=>{
-                const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.type='triangle'; o.frequency.value=f;
-                g.gain.setValueAtTime(0,now+i*0.1); g.gain.linearRampToValueAtTime(0.2,now+i*0.1+0.05); g.gain.exponentialRampToValueAtTime(0.01,now+i*0.1+1.5);
-                o.connect(g); g.connect(audioCtx.destination); o.start(now+i*0.1); o.stop(now+i*0.1+1.6);
+        // 管理名單
+        function openManageModal(){ document.getElementById('manage-modal').classList.add('active'); renderManageList(); }
+        function closeManageModal(){ document.getElementById('manage-modal').classList.remove('active'); }
+        function renderManageList(){
+            const el=document.getElementById('manage-list'); el.innerHTML='';
+            if(users.length===0) { el.innerHTML='<div style="padding:20px;text-align:center;color:#666">無人</div>'; return; }
+            users.forEach(u=>{
+                const isEx=localExcluded.has(u); const isWon=winners.includes(u);
+                const row=document.createElement('div'); row.className='user-row';
+                let btnHtml = `<button class="btn-small" style="background:${isEx?'#333':'#c62828'}" onclick="toggleEx('${u}')">${isEx?'恢復':'剔除'}</button>`;
+                if(isWon) btnHtml = `<span style="color:#ffd700">👑 已中獎</span>`;
+                
+                row.innerHTML=`<span class="${isEx?'excluded-text':''}">${u}</span>${btnHtml}`;
+                el.appendChild(row);
             });
         }
-        function speak(t) { window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='zh-TW'; window.speechSynthesis.speak(u); }
+        function toggleEx(n){ if(localExcluded.has(n)) localExcluded.delete(n); else localExcluded.add(n); socket.emit('admin_toggle_exclude',n); renderManageList(); }
+
+        // 其他
+        function updateCounters(){ joinCountEl.textContent=users.length; gameJoinCountEl.textContent=users.length; }
+        function enterGame(){ loginPage.style.display='none'; gamePage.classList.add('active'); initAudio(); initGameVisuals(); }
         
-        // 漂浮 & 禮炮
-        const cfCanvas=document.getElementById('confetti-canvas'); const cfCtx=cfCanvas.getContext('2d');
-        let particles=[]; 
-        function createFloaters() {
-            const c=document.getElementById('floaters-container'); c.innerHTML='';
-            ['🎈','✨','🎉','🌟'].forEach(()=>{
-                const d=document.createElement('div'); d.className='floater'; d.textContent=arguments[0][Math.floor(Math.random()*4)];
-                d.style.left=Math.random()*100+'vw'; d.style.fontSize=(2+Math.random()*3)+'rem'; d.style.animationDuration=(3+Math.random()*4)+'s';
-                c.appendChild(d);
-            });
-        }
-        function fireConfetti(){
-            cfCanvas.width=window.innerWidth; cfCanvas.height=window.innerHeight; particles=[];
-            for(let i=0;i<150;i++) particles.push({x:cfCanvas.width/2,y:cfCanvas.height/2,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30-5,life:1,c:`hsl(${Math.random()*360},100%,50%)`});
-            updateCf();
-        }
-        function updateCf(){
-            cfCtx.clearRect(0,0,cfCanvas.width,cfCanvas.height);
-            particles.forEach((p,i)=>{
-                p.x+=p.vx; p.y+=p.vy; p.vy+=0.5; p.life-=0.015; cfCtx.fillStyle=p.c; cfCtx.globalAlpha=p.life; cfCtx.fillRect(p.x,p.y,8,8);
-                if(p.life<=0) particles.splice(i,1);
-            });
-            if(particles.length) requestAnimationFrame(updateCf);
-        }
+        // 音效/特效 (簡化版)
+        let ac; function initAudio(){ if(!ac) ac=new (window.AudioContext||window.webkitAudioContext)(); }
+        function playTick(p){ if(!ac)return; const o=ac.createOscillator(),g=ac.createGain(); o.type='square'; o.frequency.value=p; g.gain.setValueAtTime(0.1,ac.currentTime); g.gain.exponentialRampToValueAtTime(0.01,ac.currentTime+0.05); o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+0.06); }
+        function playWinSound(){ if(!ac)return; const n=ac.currentTime; [523,659,783,1046].forEach((f,i)=>{ const o=ac.createOscillator(),g=ac.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0,n+i*0.1); g.gain.linearRampToValueAtTime(0.2,n+i*0.1+0.05); g.gain.exponentialRampToValueAtTime(0.01,n+i*0.1+1.5); o.connect(g); g.connect(ac.destination); o.start(n+i*0.1); o.stop(n+i*0.1+1.6); }); }
+        function speak(t){ window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(t); u.lang='zh-TW'; window.speechSynthesis.speak(u); }
+        const cf=document.getElementById('confetti-canvas'), cfx=cf.getContext('2d'); let ps=[];
+        function createFloaters(){ const c=document.getElementById('floaters-container'); c.innerHTML=''; ['🎈','✨'].forEach(s=>{ for(let i=0;i<10;i++){ const d=document.createElement('div'); d.className='floater'; d.textContent=s; d.style.left=Math.random()*100+'vw'; d.style.animationDuration=(3+Math.random()*4)+'s'; c.appendChild(d); }}); }
+        function fireConfetti(){ cf.width=window.innerWidth; cf.height=window.innerHeight; ps=[]; for(let i=0;i<100;i++) ps.push({x:cf.width/2,y:cf.height/2,vx:(Math.random()-0.5)*30,vy:(Math.random()-0.5)*30-5,l:1,c:`hsl(${Math.random()*360},100%,50%)`}); upCf(); }
+        function upCf(){ cfx.clearRect(0,0,cf.width,cf.height); ps.forEach((p,i)=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.5; p.l-=0.02; cfx.fillStyle=p.c; cfx.globalAlpha=p.l; cfx.fillRect(p.x,p.y,8,8); if(p.l<=0)ps.splice(i,1); }); if(ps.length) requestAnimationFrame(upCf); }
     </script>
 </body>
 </html>
