@@ -1,7 +1,7 @@
 {
-  "name": "party-lottery-service",
+  "name": "luckydraw-server",
   "version": "1.0.0",
-  "description": "Year End Party Lottery System",
+  "description": "Interactive Lucky Draw System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -11,6 +11,6 @@
     "socket.io": "^4.7.2"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=14.0.0"
   }
 }
