@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手機登入 - 抽獎活動</title>
+    <!-- Server 會自動提供 Socket.io 客戶端庫 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #d32f2f;
+            --accent: #ffd700;
+            --bg-dark: #121212;
+            --text-main: #ffffff;
+            --card-bg: #1e1e1e;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+            margin: 0;
+            background: #121212;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            overflow: hidden; /* 防止手機下拉重新整理 */
+        }
+
+        /* 主容器 */
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0; left: 0;
+        }
+
+        .card {
+            background: var-card-bg;
+            padding: 30px;
+            border-radius: 20px;
+            width: 85%;
+            max-width: 320px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+        }
+
+        h2 { margin-top: 0; color: var-accent; letter-spacing: 2px; }
+        p { color: #aaa; margin-bottom: 20px; }
+
+        /* 輸入框與按鈕 */
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            background: #2b2b2b;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+            text-align: center;
+            outline: none;
+        }
+        
+        input[type="text"]:focus {
+            border-color: var-accent;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }
+
+        button {
+            background: linear-gradient(135deg, #ffeb3b 0%, #fbc02d 100%);
+            color: #b71c1c;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+
+        button:active { transform: scale(0.98); }
+
+        /* 視圖控制 */
+        .view { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; }
+        .view.active { display: flex; }
+
+        /* 特殊狀態樣式 */
+        .win-bg {
+            background: radial-gradient(circle, #ffeb3b 0%, #ff8f00 100%);
+            color: #b71c1c;
+        }
+        .win-bg .card {
+            background: rgba(255,255,255,0.9);
+            color: #b71c1c;
+            border: none;
+            box-shadow: 0 0 50px rgba(255, 255, 0, 0.5);
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        .loading-icon { font-size: 4rem; animation: spin 0.8s linear infinite; margin-bottom: 20px; }
+        .win-icon { font-size: 5rem; animation: pulse 1s infinite; margin-bottom: 10px; display: block; }
+        
+        .status-badge {
+            background: #333;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 1. 登入畫面 -->
+        <div id="view-login" class="view active">
+            <div class="card">
+                <h2>參加抽獎</h2>
+                <p>請輸入您的暱稱加入活動</p>
+                <input type="text" id="username" placeholder="例：王小明" maxlength="10">
+                <button onclick="login()">確認加入</button>
+                <div id="error-msg" style="color:#ff5252; margin-top:15px; font-size:0.9rem; min-height:1.2em;"></div>
+            </div>
+        </div>
+
+        <!-- 2. 等待畫面 -->
+        <div id="view-wait" class="view">
+            <div class="card">
+                <div class="status-badge">已連線</div>
+                <h2 style="color:#4caf50;">登入成功</h2>
+                <div style="font-size:3rem; margin:20px 0;">🎉</div>
+                <h3 id="display-name" style="font-size:1.5rem; margin:10px 0;">User</h3>
+                <p>請關注前方大螢幕</p>
+            </div>
+        </div>
+
+        <!-- 3. 抽獎進行中 -->
+        <div id="view-rolling" class="view">
+            <div class="card" style="border-color: var-accent;">
+                <div class="loading-icon">🎰</div>
+                <h2 style="color:var-accent;">抽獎進行中</h2>
+                <p style="color:white;">祝您好運！</p>
+            </div>
+        </div>
+
+        <!-- 4. 結果畫面 (中獎/沒中) -->
+        <div id="view-result" class="view">
+            <!-- JS 動態填入內容 -->
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let myName = "";
+
+        // --- 登入邏輯 ---
+        function login() {
+            const input = document.getElementById('username');
+            const name = input.value.trim();
+            const errorDiv = document.getElementById('error-msg');
+
+            if (!name) {
+                errorDiv.textContent = "名字不能為空！";
+                return;
+            }
+
+            // 發送登入請求
+            socket.emit('mobile_login', name);
+            errorDiv.textContent = "連線中...";
+        }
+
+        // --- Socket 事件監聽 ---
+
+        // 1. 登入成功
+        socket.on('login_success', (data) => {
+            myName = data.name;
+            document.getElementById('display-name').textContent = myName;
+            document.getElementById('error-msg').textContent = "";
+            switchView('view-wait');
+        });
+
+        // 2. 登入失敗 (例如名字重複)
+        socket.on('login_error', (msg) => {
+            document.getElementById('error-msg').textContent = msg;
+        });
+
+        // 3. 大螢幕開始滾動 (顯示抽獎中動畫)
+        socket.on('client_show_rolling', () => {
+            switchView('view-rolling');
+        });
+
+        // 4. 開獎結果
+        socket.on('draw_result', (data) => {
+            const resultDiv = document.getElementById('view-result');
+            
+            if (data.winnerName === myName) {
+                // --- 我中獎了 ---
+                document.body.classList.add('win-bg'); // 背景變金
+                resultDiv.innerHTML = `
+                    <div class="card">
+                        <span class="win-icon">🏆</span>
+                        <h1 style="color:#d32f2f; margin:10px 0; font-size:2rem;">恭喜中獎！</h1>
+                        <p style="color:#333;">您是幸運得主</p>
+                        <div style="background:#eee; padding:10px; border-radius:10px; font-weight:bold; color:#333; margin-top:20px;">
+                            請至台前領獎
+                        </div>
+                    </div>
+                `;
+            } else {
+                // --- 別人中獎 ---
+                document.body.classList.remove('win-bg');
+                resultDiv.innerHTML = `
+                    <div class="card">
+                        <div style="font-size:3rem; margin-bottom:10px;">👏</div>
+                        <h2>得獎者產生</h2>
+                        <h3 style="color:#ffd700; font-size:1.8rem; margin:20px 0;">${data.winnerName}</h3>
+                        <p>別灰心，下次就是您！</p>
+                    </div>
+                `;
+            }
+            switchView('view-result');
+        });
+
+        // 5. 活動重置
+        socket.on('event_reset', () => {
+            alert("活動已重置，請重新登入");
+            location.reload();
+        });
+
+        // --- 輔助函式 ---
+        function switchView(viewId) {
+            // 隱藏所有視圖
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            // 顯示目標視圖
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        // 處理鍵盤 Enter 登入
+        document.getElementById('username').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+
+    </script>
+</body>
+</html>
